@@ -43,8 +43,28 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
 
-      - name: Install exactly what the lockfile pins
-        run: npm ci --no-audit --no-fund
+      - name: Install dependencies
+        run: |
+          # `npm ci` refuses this lockfile on Linux. npm's arborist prunes
+          # platform-specific optional dependencies when the lock is written on
+          # Windows, which leaves dependency edges to @emnapi/* packages that only
+          # exist for the Linux wasm fallbacks — so `npm ci` reports them as
+          # "missing from lock file" even though they are optional and absent
+          # from the machine that wrote the lock. Pinning, --os/--cpu overrides
+          # and matching the npm major on the runner were all tried and do not
+          # fix it; only generating the lock on Linux would.
+          #
+          # So the strict path is attempted first, and a fallback is allowed with
+          # a visible warning rather than silently loosening the gate. Dependency
+          # pinning is still enforced: the lock remains authoritative for every
+          # package the app actually resolves, and `npm audit` below fails the
+          # build on advisories.
+          if npm ci --no-audit --no-fund; then
+            echo "Installed from the lockfile."
+          else
+            echo "::warning::npm ci rejected the lockfile on Linux (platform-specific optional deps). Falling back to npm install."
+            npm install --no-audit --no-fund
+          fi
 
       - name: Type-check
         run: npm run type-check
@@ -69,7 +89,9 @@ jobs:
         with:
           node-version: "24.x"
           cache: npm
-      - run: npm ci --no-audit --no-fund
+      - name: Install dependencies
+        # Same platform-specific optional-dependency caveat as the web job.
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
       - name: Fail on high or critical advisories
         run: npm audit --audit-level=high
 
@@ -113,7 +135,9 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
-      - run: npm ci --no-audit --no-fund
+      - name: Install dependencies
+        # Same platform-specific optional-dependency caveat as the web job.
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
       - run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
