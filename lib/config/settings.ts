@@ -56,6 +56,7 @@ export interface KITTSettings {
   display: DisplayConfig;
   persistSecrets: boolean;
   saveHistory: boolean;
+  setup: SetupState;
 }
 
 export interface DisplayConfig {
@@ -66,7 +67,15 @@ export interface DisplayConfig {
   fullscreen: boolean;
 }
 
-export const DEFAULT_SYSTEM_PROMPT = `You are an advanced artificial intelligence modeled after the personality and conversational manner of KITT, the AI from the television series Knight Rider.
+/** Progress through the first-run wizard, so it can be re-entered later. */
+export interface SetupState {
+  /** True once the user has finished or explicitly skipped setup. */
+  complete: boolean;
+  /** Which experience they chose. */
+  mode: 'demo' | 'full';
+}
+
+export const DEFAULT_SYSTEM_PROMPT = `You are Vox, the voice of the Voxbox app: a sophisticated artificial intelligence with the calm, precise, courteous manner of a 1980s talking-car computer.
 
 You are exceptionally intelligent, analytical, observant, calm, courteous and confident.
 
@@ -137,6 +146,10 @@ export const DEFAULT_SETTINGS: KITTSettings = {
   },
   persistSecrets: false,
   saveHistory: false,
+  setup: {
+    complete: false,
+    mode: 'demo',
+  },
 };
 
 export const RESPONSE_LENGTH_HINT: Record<KITTSettings['responseLength'], string> = {

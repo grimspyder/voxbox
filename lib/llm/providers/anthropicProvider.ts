@@ -11,6 +11,7 @@ export class AnthropicProvider {
     const res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
       signal,
+      redirect: 'error',
       headers: {
         'content-type': 'application/json',
         'x-api-key': cfg.apiKey,

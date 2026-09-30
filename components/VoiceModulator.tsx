@@ -1,4 +1,4 @@
-// KITT dashboard voice modulator — three red segmented LED columns.
+// Vox dashboard voice modulator — three red segmented LED columns.
 // Layout per reference: center column 9 rows; side columns 7 rows, aligned
 // toward the vertical center of the center column. Segments expand outward
 // from center. Labels: AIR/OIL/P1/P2 left; S1/S2/P3/P4 right;
@@ -95,7 +95,7 @@ export default function VoiceModulator({ getLevels, brightness = 1 }: Props) {
 
   // side columns vertically centered relative to center column
   return (
-    <div ref={rootRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: '100%', width: '100%' }} aria-label="KITT voice modulator" role="img">
+    <div ref={rootRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: '100%', width: '100%' }} aria-label="Vox voice modulator" role="img">
       <div style={{ height: '100%', width: '14%', position: 'relative' }}>{col(SIDE_ROWS, 'left')}</div>
       <div style={{ height: '100%', width: '18%', position: 'relative' }}>{col(CENTER_ROWS, 'center')}</div>
       <div style={{ height: '100%', width: '14%', position: 'relative' }}>{col(SIDE_ROWS, 'right')}</div>

@@ -104,6 +104,7 @@ export async function loadSettings(): Promise<KITTSettings> {
         stt: { ...DEFAULT_SETTINGS.stt, ...stored.stt },
         mic: { ...DEFAULT_SETTINGS.mic, ...(stored as Partial<KITTSettings>).mic },
         display: { ...DEFAULT_SETTINGS.display, ...(stored as Partial<KITTSettings>).display },
+        setup: { ...DEFAULT_SETTINGS.setup, ...(stored as Partial<KITTSettings>).setup },
       };
     }
   } catch {

@@ -4,6 +4,10 @@ import OpenAI from 'openai';
 import { LLMProvider, ChatMessage, KITTError } from '../types';
 import { LLMConfig } from '../../config/settings';
 
+// A provider response must never be able to redirect the server elsewhere.
+const guardedFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
+  fetch(input, { ...(init ?? {}), redirect: 'error' });
+
 export class OpenAIProvider implements LLMProvider {
   id = 'openai';
 
@@ -14,6 +18,7 @@ export class OpenAIProvider implements LLMProvider {
       baseURL: cfg.baseUrl || undefined,
       timeout: 30000,
       maxRetries: 1,
+      fetch: guardedFetch,
     });
   }
 

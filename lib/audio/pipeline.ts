@@ -166,7 +166,7 @@ export class AudioPipeline {
     const sb = ms.addSourceBuffer(mime);
     // Connect the media element to the analyser BEFORE playback starts.
     // Connecting after el.onended meant the analyser saw silence for the
-    // entire response, so the KITT bars never moved with ElevenLabs audio.
+    // entire response, so the Vox bars never moved with ElevenLabs audio.
     try {
       const src = this.ctx!.createMediaElementSource(el);
       src.connect(this.analyser!);

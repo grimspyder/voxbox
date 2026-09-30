@@ -1,6 +1,7 @@
 // Client-side LLM access. Routes through /api/llm so keys are used server-side.
 import { ChatMessage, KITTError } from './types';
 import { demoProvider } from './providers/demoProvider';
+import { apiUrl, apiHeaders } from '../config/apiBase';
 
 export interface Turn {
   role: 'user' | 'assistant';
@@ -21,10 +22,10 @@ export class LLMClient {
       for await (const c of demoProvider.streamChat(messages)) yield c;
       return;
     }
-    const res = await fetch('/api/llm', {
+    const res = await fetch(apiUrl('/api/llm'), {
       method: 'POST',
       signal,
-      headers: { 'content-type': 'application/json' },
+      headers: apiHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify({ ...opts, messages, stream: true }),
     });
     if (!res.ok || !res.body) {

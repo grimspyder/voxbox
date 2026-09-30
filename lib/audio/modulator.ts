@@ -1,4 +1,4 @@
-// Maps live audio analysis to the three-bar KITT voice modulator levels.
+// Maps live audio analysis to the three-bar Vox voice modulator levels.
 // Left bar: low band. Center: mid (strongest vocal energy). Right: high band.
 // Bars expand symmetrically FROM CENTER — discrete segments light outward.
 
@@ -18,7 +18,7 @@ export interface ModulatorTuning {
 }
 
 export const DEFAULT_TUNING: ModulatorTuning = {
-  // Tuned for the short, discrete bursts of the physical KITT display.
+  // Tuned for the short, discrete bursts of the physical Vox display.
   attackMs: 18,
   releaseMs: 88,
   noiseFloor: 0.018,
@@ -45,7 +45,7 @@ export function computeBarLevels(
   const g = tuning.gain;
   const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
-  // KITT's two outer columns are mirrored: both show the same level.
+  // Vox's two outer columns are mirrored: both show the same level.
   // The center column follows the same speech envelope with a modest boost.
   // Frequency analysis is intentionally used only to stabilize the shared
   // voice envelope; it must never make left and right diverge.

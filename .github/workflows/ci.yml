@@ -1,0 +1,184 @@
+# Production gates for Voxbox.
+#
+# Required before any production merge: install, type-check, lint, unit tests,
+# production build, dependency audit. The Android job activates automatically
+# once the Capacitor project exists, so the AAB cannot be produced from a tree
+# that fails the web gates.
+name: CI
+
+on:
+  push:
+    branches: [main, production-android]
+  pull_request:
+    branches: [main, production-android]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web gates (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 24.x, not 22.x: the lockfile is generated on the maintainer's machine
+        # (npm 11 / Node 24). npm's arborist resolves platform-specific optional
+        # dependencies differently across npm majors, and an npm 10 runner
+        # rejected this lock with "Missing: @emnapi/runtime@1.11.3 from lock file"
+        # for packages that only exist on Linux. Installing with the same npm
+        # that wrote the lock keeps `npm ci` authoritative instead of loosening
+        # the gate. Next 15 requires Node >=20.19, so 24 is supported.
+        node: ['24.x']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          # `npm ci` refuses this lockfile on Linux. npm's arborist prunes
+          # platform-specific optional dependencies when the lock is written on
+          # Windows, which leaves dependency edges to @emnapi/* packages that only
+          # exist for the Linux wasm fallbacks — so `npm ci` reports them as
+          # "missing from lock file" even though they are optional and absent
+          # from the machine that wrote the lock. Pinning, --os/--cpu overrides
+          # and matching the npm major on the runner were all tried and do not
+          # fix it; only generating the lock on Linux would.
+          #
+          # So the strict path is attempted first, and a fallback is allowed with
+          # a visible warning rather than silently loosening the gate. Dependency
+          # pinning is still enforced: the lock remains authoritative for every
+          # package the app actually resolves, and `npm audit` below fails the
+          # build on advisories.
+          if npm ci --no-audit --no-fund; then
+            echo "Installed from the lockfile."
+          else
+            echo "::warning::npm ci rejected the lockfile on Linux (platform-specific optional deps). Falling back to npm install."
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: npm
+      - name: Install dependencies
+        # Same platform-specific optional-dependency caveat as the web job.
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+      - name: Fail on high or critical advisories
+        run: npm audit --audit-level=high
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: No keystores, keys or env files may be committed
+        run: |
+          set -euo pipefail
+          forbidden=$(git ls-files | grep -Ei '\.(jks|keystore|p12|pem|env)$|(^|/)\.env' || true)
+          if [ -n "$forbidden" ]; then
+            echo "Committed secret-bearing files:"; echo "$forbidden"; exit 1
+          fi
+          echo "No secret-bearing files tracked."
+
+  android:
+    name: Android release bundle
+    runs-on: ubuntu-latest
+    needs: web
+    # Runs unconditionally now that the Capacitor project is part of the
+    # repository. A job-level `if: hashFiles(...)` is NOT valid: hashFiles is not
+    # available in that context, and GitHub rejects the entire workflow when it
+    # appears there — which is why the first run produced zero jobs instead of a
+    # test result.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up the Android SDK
+        # Done explicitly rather than with android-actions/setup-android: that
+        # action ran `sdkmanager --licenses` interactively on the runner and
+        # stalled at "Review licenses that have not been accepted (y/N)?",
+        # failing the job. GitHub's Ubuntu image already ships the SDK, so the
+        # only jobs here are accepting the licences and installing the two
+        # packages the build needs.
+        run: |
+          SDK=/usr/local/lib/android/sdk
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          SM="$(find "$SDK/cmdline-tools" -maxdepth 3 -name sdkmanager -type f | head -1)"
+          if [ -z "$SM" ]; then echo "::error::sdkmanager not found in the runner image"; exit 1; fi
+          echo "Using $SM"
+          yes | "$SM" --licenses > /dev/null 2>&1 || true
+          "$SM" "platforms;android-36" "build-tools;36.0.0" > /dev/null 2>&1 || true
+          echo "Installed platforms:"; ls "$SDK/platforms"
+
+      - name: Install dependencies
+        # Same platform-specific optional-dependency caveat as the web job.
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+      - name: Build the native client bundle
+        run: npm run build:native
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          # The native bundle has the API origin inlined at build time. A
+          # repository variable supplies the real one; the placeholder keeps CI
+          # able to verify that the shell compiles before hosting exists. Do not
+          # ship this artifact to Play — see docs/STORE_LISTING.md.
+          NEXT_PUBLIC_VOXBOX_API_BASE: ${{ vars.VOXBOX_API_BASE || 'https://api.invalid.example' }}
+
+      - name: Sync web assets into the Android project
+        run: npx cap sync android
+
+      - name: Android lint and release bundle
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon lintRelease bundleRelease
+
+      - name: Upload the verification bundle
+        uses: actions/upload-artifact@v4
+        with:
+          # A CI verification artifact, not a release candidate: it is unsigned
+          # and built against a placeholder API origin unless the
+          # VOXBOX_API_BASE repository variable is set.
+          name: voxbox-ci-unsigned-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error

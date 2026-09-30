@@ -1,10 +1,10 @@
 // Microphone capture + VAD + end-of-turn detection + barge-in detection.
-// Mic audio NEVER connects to the KITT display analyser.
+// Mic audio NEVER connects to the Vox display analyser.
 
 export interface MicHandlers {
   onUtterance?: (blob: Blob) => void;
   onLevel?: (level: number) => void; // 0..1, for input meter only
-  onBargeIn?: () => void; // user started speaking while KITT talks
+  onBargeIn?: () => void; // user started speaking while Vox talks
   onError?: (message: string) => void;
   onEndOfTurn?: () => void;
 }
@@ -40,7 +40,7 @@ export class MicCapture {
   private rmsHistory: number[] = [];
   private adaptiveThreshold = 0.02;
   active = false;
-  /** While KITT is speaking, mic monitors for barge-in only (if enabled). */
+  /** While Vox is speaking, mic monitors for barge-in only (if enabled). */
   bargeInArmed = false;
 
   async start(handlers: MicHandlers, opts: MicOptions): Promise<void> {
