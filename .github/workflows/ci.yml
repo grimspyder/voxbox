@@ -87,8 +87,11 @@ jobs:
     name: Android release bundle
     runs-on: ubuntu-latest
     needs: web
-    # Activates as soon as the Capacitor project lands in the repository.
-    if: ${{ hashFiles('android/app/build.gradle') != '' }}
+    # Runs unconditionally now that the Capacitor project is part of the
+    # repository. A job-level `if: hashFiles(...)` is NOT valid: hashFiles is not
+    # available in that context, and GitHub rejects the entire workflow when it
+    # appears there — which is why the first run produced zero jobs instead of a
+    # test result.
     steps:
       - uses: actions/checkout@v4
 
