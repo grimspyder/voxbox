@@ -20,7 +20,7 @@ if (!apiBase) {
     '\n[native] NEXT_PUBLIC_VOXBOX_API_BASE is not set.\n' +
       '[native] The Android build will work in demo mode only: AI and voice calls\n' +
       '[native] have nowhere to go. Set it to the hosted API origin, e.g.\n' +
-      '[native]   NEXT_PUBLIC_VOXBOX_API_BASE=https://kitt.example.com npm run build:native\n',
+      '[native]   NEXT_PUBLIC_VOXBOX_API_BASE=https://voxbox.example.com npm run build:native\n',
   );
 } else if (!/^https:\/\//.test(apiBase)) {
   console.error(`[native] NEXT_PUBLIC_VOXBOX_API_BASE must be an https origin, got: ${apiBase}`);

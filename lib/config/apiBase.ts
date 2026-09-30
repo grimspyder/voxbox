@@ -6,7 +6,7 @@
 // Native (Capacitor) build: the web assets ship inside the app and are served
 // from a local origin, so relative /api URLs cannot work. Set
 // NEXT_PUBLIC_VOXBOX_API_BASE at build time to the hosted API origin, e.g.
-//   NEXT_PUBLIC_VOXBOX_API_BASE=https://kitt.example.com
+//   NEXT_PUBLIC_VOXBOX_API_BASE=https://voxbox.example.com
 // This is the single place the production API origin is declared (§37) —
 // never scatter absolute URLs through the app.
 
