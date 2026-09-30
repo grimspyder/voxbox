@@ -8,11 +8,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { KITTSettings, TTSProviderId } from '@/lib/config/settings';
+import { KITTSettings } from '@/lib/config/settings';
 import { PROVIDER_CARDS, providerCard } from '@/lib/config/providers';
 import { discoverModels, discoverVoices, VOICE_TEST_PHRASE, VoiceOption } from '@/lib/setup/discovery';
 import { buildSystemCheck, summariseCheck, firstBlockerSentence, SetupFacts } from '@/lib/setup/readiness';
 import { startMicMeter, MicMeter } from '@/lib/setup/micCheck';
+import { voiceOptions, VoiceAvailability } from '@/lib/setup/voiceOptions';
 import { llmClient } from '@/lib/llm/client';
 import { TTSClient } from '@/lib/tts/client';
 import { AudioPipeline } from '@/lib/audio/pipeline';
@@ -84,6 +85,13 @@ export default function SetupWizard({ initial, onFinish }: Props) {
   const [voiceList, setVoiceList] = useState<VoiceOption[]>([]);
   const [voiceResult, setVoiceResult] = useState<Result | null>(null);
   const [testingVoice, setTestingVoice] = useState(false);
+  // Which voices this device can actually produce. Measured after mount so the
+  // prerendered markup cannot disagree with the DOM.
+  const [voices, setVoices] = useState<VoiceAvailability[]>([]);
+
+  useEffect(() => {
+    setVoices(voiceOptions());
+  }, []);
 
   // Microphone step
   const [micResult, setMicResult] = useState<Result | null>(null);
@@ -436,31 +444,36 @@ export default function SetupWizard({ initial, onFinish }: Props) {
             <h1 style={h1}>CHOOSE KITT&apos;S VOICE</h1>
             <p style={body}>How should KITT sound when he answers you?</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-              {(
-                [
-                  { id: 'demo', name: 'KITT Demo Voice', blurb: 'KITT’s own synthesised voice. Free and offline.' },
-                  { id: 'browser', name: 'Device Voice', blurb: 'The built-in voice already on this device.' },
-                  { id: 'openai', name: 'OpenAI Voice', blurb: 'Natural spoken voice through OpenAI.' },
-                  { id: 'elevenlabs', name: 'Custom Voice', blurb: 'Your own voice from an ElevenLabs account.' },
-                ] as { id: TTSProviderId; name: string; blurb: string }[]
-              ).map((option) => {
-                const active = draft.tts.provider === option.id;
+              {voices.map((option) => {
+                const active = draft.tts.provider === option.provider;
                 return (
                   <button
-                    key={option.id}
-                    style={{ ...(active ? primary : btn), textAlign: 'left' }}
+                    key={option.provider}
+                    style={{
+                      ...(active ? primary : btn),
+                      textAlign: 'left',
+                      opacity: option.available ? 1 : 0.5,
+                      cursor: option.available ? 'pointer' : 'not-allowed',
+                    }}
                     aria-pressed={active}
+                    disabled={!option.available}
                     onClick={() => {
                       setDraft((d) => ({
                         ...d,
-                        tts: { ...d.tts, provider: option.id, voiceId: option.id === 'openai' ? d.tts.voiceId || 'onyx' : d.tts.voiceId },
+                        tts: {
+                          ...d.tts,
+                          provider: option.provider,
+                          voiceId: option.provider === 'openai' ? d.tts.voiceId || 'onyx' : d.tts.voiceId,
+                        },
                       }));
                       setVoiceResult(null);
                       setVoiceList([]);
                     }}
                   >
                     {option.name}
-                    <span style={{ display: 'block', ...mute, marginTop: 4 }}>{option.blurb}</span>
+                    <span style={{ display: 'block', ...mute, marginTop: 4 }}>
+                      {option.available ? option.blurb : option.reason}
+                    </span>
                   </button>
                 );
               })}

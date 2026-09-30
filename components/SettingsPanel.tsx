@@ -1,7 +1,7 @@
 // Settings drawer — organized sections; secrets masked; test buttons.
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { KITTSettings, DEFAULT_SYSTEM_PROMPT, TTSProviderId, ProviderId, STTProviderId } from '@/lib/config/settings';
 import { llmClient } from '@/lib/llm/client';
 import { TTSClient } from '@/lib/tts/client';
@@ -9,6 +9,7 @@ import { AudioPipeline } from '@/lib/audio/pipeline';
 import { maskKey } from '@/lib/config/storage';
 import { testMicrophone } from '@/lib/stt/micTest';
 import { buildSystemCheck, summariseCheck } from '@/lib/setup/readiness';
+import { reportCapabilities, Capability } from '@/lib/setup/capabilities';
 
 interface Props {
   settings: KITTSettings;
@@ -59,6 +60,17 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
     settings.tts.provider === 'demo' || settings.tts.provider === 'browser',
   );
   const [micReady, setMicReady] = useState(false);
+  // Capabilities differ between a browser and the Android WebView, and the
+  // answer decides which voice/speech options are worth offering. Evaluated
+  // after mount so the prerendered HTML cannot disagree with the DOM.
+  const [caps, setCaps] = useState<Capability[]>([]);
+  const [capSummary, setCapSummary] = useState('');
+
+  useEffect(() => {
+    const report = reportCapabilities();
+    setCaps(report.capabilities);
+    setCapSummary(report.summary);
+  }, []);
 
   const upd = (patch: Partial<KITTSettings>) => setS((prev) => ({ ...prev, ...patch }));
 
@@ -109,6 +121,9 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
   };
   const checks = buildSystemCheck(facts);
   const summary = summariseCheck(checks);
+  // Optimistic until the capability probe reports in, so the prerendered HTML
+  // and the first client render agree.
+  const deviceVoiceOk = caps.length === 0 || (caps.find((c) => c.id === 'speech-synthesis')?.ok ?? true);
 
   return (
     <div role="dialog" aria-label="Settings" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 50, overflowY: 'auto', padding: '16px' }}>
@@ -167,6 +182,43 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
                 ? `${summary.passed} of ${checks.length} checks passed.`
                 : 'Fix the item marked ✖ and KITT will be ready.'}
             </p>
+
+            {caps.length > 0 && (
+              <>
+                <label style={label}>DEVICE CAPABILITIES</label>
+                <p style={{ fontSize: 11, color: '#666', lineHeight: 1.6 }}>
+                  What this device and its browser engine actually support — measured on this device, not assumed.
+                </p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0' }}>
+                  {caps.map((c) => (
+                    <li
+                      key={c.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        padding: '8px 0',
+                        borderBottom: '1px solid #161616',
+                      }}
+                    >
+                      <span style={{ fontSize: 12, color: '#bbb' }}>{c.label}</span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          textAlign: 'right',
+                          color: c.ok ? '#7bd87b' : '#ff9a3c',
+                          maxWidth: '55%',
+                        }}
+                      >
+                        {c.ok ? '✓ ' : '! '}
+                        {c.detail}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p style={{ fontSize: 10, color: '#555', wordBreak: 'break-word' }}>{capSummary}</p>
+              </>
+            )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
               <button className="kitt-btn" onClick={onRunSetup}>
                 RUN SETUP AGAIN
@@ -230,10 +282,18 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             <label style={label}>Voice provider</label>
             <select style={input} value={s.tts.provider} onChange={(e) => upd({ tts: { ...s.tts, provider: e.target.value as TTSProviderId } })}>
               <option value="demo">Demo synth voice (no API)</option>
-              <option value="browser">Browser built-in voice</option>
+              <option value="browser" disabled={!deviceVoiceOk}>
+                Browser built-in voice{deviceVoiceOk ? '' : ' — not available on this device'}
+              </option>
               <option value="elevenlabs">ElevenLabs</option>
               <option value="openai">OpenAI TTS</option>
             </select>
+            {!deviceVoiceOk && (
+              <p style={{ fontSize: 11, color: '#ff9a3c', marginTop: 6 }}>
+                This device&apos;s browser engine provides no built-in voice, so a browser voice cannot be spoken
+                here. Use the KITT demo voice or a cloud voice.
+              </p>
+            )}
             {(s.tts.provider === 'elevenlabs' || s.tts.provider === 'openai') && (
               <>
                 <label style={label}>API key</label>
