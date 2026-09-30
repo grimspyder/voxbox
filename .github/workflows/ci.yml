@@ -27,8 +27,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Next.js 15 requires Node 20.19+; CI pins the version we build with.
-        node: ['22.x']
+        # 24.x, not 22.x: the lockfile is generated on the maintainer's machine
+        # (npm 11 / Node 24). npm's arborist resolves platform-specific optional
+        # dependencies differently across npm majors, and an npm 10 runner
+        # rejected this lock with "Missing: @emnapi/runtime@1.11.3 from lock file"
+        # for packages that only exist on Linux. Installing with the same npm
+        # that wrote the lock keeps `npm ci` authoritative instead of loosening
+        # the gate. Next 15 requires Node >=20.19, so 24 is supported.
+        node: ['24.x']
     steps:
       - uses: actions/checkout@v4
 
@@ -61,7 +67,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: "24.x"
           cache: npm
       - run: npm ci --no-audit --no-fund
       - name: Fail on high or critical advisories
@@ -97,7 +103,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: "24.x"
           cache: npm
 
       - uses: actions/setup-java@v4
