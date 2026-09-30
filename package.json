@@ -8,12 +8,18 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:native": "node scripts/build-native.mjs",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "android:sync": "npm run build:native && cap sync android",
+    "android:debug": "npm run android:sync && node scripts/android-build.mjs assembleDebug",
+    "android:bundle": "npm run android:sync && node scripts/android-build.mjs bundleRelease"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "next": "15.5.26",
     "openai": "^4.104.0",
     "react": "^18",
@@ -21,6 +27,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@types/jest": "^30.0.0",
