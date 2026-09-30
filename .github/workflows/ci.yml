@@ -154,9 +154,15 @@ jobs:
       - name: Install dependencies
         # Same platform-specific optional-dependency caveat as the web job.
         run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
-      - run: npm run build
+      - name: Build the native client bundle
+        run: npm run build:native
         env:
           NEXT_TELEMETRY_DISABLED: '1'
+          # The native bundle has the API origin inlined at build time. A
+          # repository variable supplies the real one; the placeholder keeps CI
+          # able to verify that the shell compiles before hosting exists. Do not
+          # ship this artifact to Play — see docs/STORE_LISTING.md.
+          NEXT_PUBLIC_VOXBOX_API_BASE: ${{ vars.VOXBOX_API_BASE || 'https://api.invalid.example' }}
 
       - name: Sync web assets into the Android project
         run: npx cap sync android
@@ -167,9 +173,12 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --no-daemon lintRelease bundleRelease
 
-      - name: Upload the release bundle
+      - name: Upload the verification bundle
         uses: actions/upload-artifact@v4
         with:
-          name: voxbox-release-aab
+          # A CI verification artifact, not a release candidate: it is unsigned
+          # and built against a placeholder API origin unless the
+          # VOXBOX_API_BASE repository variable is set.
+          name: voxbox-ci-unsigned-aab
           path: android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
