@@ -1,0 +1,126 @@
+# Production gates for KITT AI Assistant.
+#
+# Required before any production merge: install, type-check, lint, unit tests,
+# production build, dependency audit. The Android job activates automatically
+# once the Capacitor project exists, so the AAB cannot be produced from a tree
+# that fails the web gates.
+name: CI
+
+on:
+  push:
+    branches: [main, production-android]
+  pull_request:
+    branches: [main, production-android]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web gates (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Next.js 15 requires Node 20.19+; CI pins the version we build with.
+        node: ['22.x']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install exactly what the lockfile pins
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Fail on high or critical advisories
+        run: npm audit --audit-level=high
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: No keystores, keys or env files may be committed
+        run: |
+          set -euo pipefail
+          forbidden=$(git ls-files | grep -Ei '\.(jks|keystore|p12|pem|env)$|(^|/)\.env' || true)
+          if [ -n "$forbidden" ]; then
+            echo "Committed secret-bearing files:"; echo "$forbidden"; exit 1
+          fi
+          echo "No secret-bearing files tracked."
+
+  android:
+    name: Android release bundle
+    runs-on: ubuntu-latest
+    needs: web
+    # Activates as soon as the Capacitor project lands in the repository.
+    if: ${{ hashFiles('android/app/build.gradle') != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Sync web assets into the Android project
+        run: npx cap sync android
+
+      - name: Android lint and release bundle
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon lintRelease bundleRelease
+
+      - name: Upload the release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: kitt-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error

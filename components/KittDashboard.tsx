@@ -10,6 +10,7 @@ import VoiceModulator from './VoiceModulator';
 import { ConversationEngine } from '@/lib/conversation/engine';
 import { KITTSettings, DEFAULT_SETTINGS } from '@/lib/config/settings';
 import { loadSettings, saveSettings, deleteSecrets } from '@/lib/config/storage';
+import { loadHistory, saveHistory as persistHistory, clearHistory } from '@/lib/config/history';
 import { MachineSnapshot } from '@/lib/conversation/stateMachine';
 import { computeBarLevels, BarLevels, DEFAULT_TUNING, ModulatorTuning } from '@/lib/audio/modulator';
 import SettingsPanel from './SettingsPanel';
@@ -44,6 +45,7 @@ export default function KittDashboard() {
   const [micList, setMicList] = useState<MediaDeviceInfo[]>([]);
 
   const engineRef = useRef<ConversationEngine | null>(null);
+  const settingsLoadedRef = useRef(false);
   const levelsRef = useRef<BarLevels>({ left: 0, center: 0, right: 0 });
   const lastTickRef = useRef<number>(0);
   const tuningRef = useRef<ModulatorTuning>({ ...DEFAULT_TUNING });
@@ -53,9 +55,21 @@ export default function KittDashboard() {
   useEffect(() => {
     void loadSettings().then((s) => {
       setSettings(s);
+      settingsLoadedRef.current = true;
+      // Restore a saved transcript only when the user has opted into storage.
+      setTranscript(s.saveHistory ? loadHistory() : []);
     });
     void listMics().then(setMicList);
   }, []);
+
+  // Persist the transcript on device only while the user keeps the option on.
+  // Guarded on the settings load so the defaults cannot wipe a saved transcript
+  // before the stored preference has been read.
+  useEffect(() => {
+    if (!settingsLoadedRef.current) return;
+    if (settings.saveHistory) persistHistory(transcript);
+    else clearHistory();
+  }, [transcript, settings.saveHistory]);
 
   const refreshMics = useCallback(async () => {
     // enumerateDevices exposes useful labels after getUserMedia permission.
@@ -134,6 +148,36 @@ export default function KittDashboard() {
 
   const interrupt = useCallback(() => {
     engineRef.current?.interrupt();
+  }, []);
+
+  /** Clear the conversation context KITT is using (keeps the session running). */
+  const newConversation = useCallback(() => {
+    engineRef.current?.newConversation();
+    setInterim('');
+    setTranscript([]);
+    clearHistory();
+  }, []);
+
+  /** Delete the saved transcript from this device (§97). */
+  const handleClearHistory = useCallback(() => {
+    clearHistory();
+    setTranscript([]);
+    setInterim('');
+  }, []);
+
+  /** Return every setting to its default and drop stored credentials (§96). */
+  const handleResetSetup = useCallback(async () => {
+    engineRef.current?.stop();
+    engineRef.current = null;
+    await deleteSecrets();
+    clearHistory();
+    const fresh: KITTSettings = { ...DEFAULT_SETTINGS };
+    setSettings(fresh);
+    await saveSettings(fresh);
+    setTranscript([]);
+    setInterim('');
+    setError(null);
+    setMachine({ state: 'DISCONNECTED', history: [] });
   }, []);
 
   // Synthetic LED test mode: drives the modulator without any audio (spec §14).
@@ -305,6 +349,9 @@ export default function KittDashboard() {
         ) : (
           <button onClick={stopConversation} className="kitt-btn">■ END</button>
         )}
+        {machine.state !== 'DISCONNECTED' && (
+          <button onClick={newConversation} className="kitt-btn" aria-label="Start a new conversation and clear context">✳ NEW CONVERSATION</button>
+        )}
         {machine.state === 'SPEAKING' && (
           <button onClick={interrupt} className="kitt-btn" aria-label="Interrupt KITT">✖ INTERRUPT</button>
         )}
@@ -373,6 +420,8 @@ export default function KittDashboard() {
             await deleteSecrets();
             setSettings((s) => ({ ...s, persistSecrets: false }));
           }}
+          onClearHistory={handleClearHistory}
+          onResetSetup={() => void handleResetSetup()}
         />
       )}
 

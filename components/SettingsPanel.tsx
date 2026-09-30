@@ -15,12 +15,14 @@ interface Props {
   onRefreshMics: () => Promise<void>;
   onClose: (next?: KITTSettings) => void;
   onDeleteSecrets: () => void;
+  onClearHistory: () => void;
+  onResetSetup: () => void;
 }
 
 type Section = 'AI BRAIN' | 'VOICE' | 'SPEECH' | 'AUDIO' | 'PERSONALITY' | 'CONVERSATION' | 'DISPLAY' | 'PRIVACY' | 'ADVANCED';
 const SECTIONS: Section[] = ['AI BRAIN', 'VOICE', 'SPEECH', 'AUDIO', 'PERSONALITY', 'CONVERSATION', 'DISPLAY', 'PRIVACY', 'ADVANCED'];
 
-export default function SettingsPanel({ settings, micList, onRefreshMics, onClose, onDeleteSecrets }: Props) {
+export default function SettingsPanel({ settings, micList, onRefreshMics, onClose, onDeleteSecrets, onClearHistory, onResetSetup }: Props) {
   const [s, setS] = useState<KITTSettings>({ ...settings });
   const [section, setSection] = useState<Section>('AI BRAIN');
   const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -217,9 +219,16 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
 
         {section === 'CONVERSATION' && (
           <div>
-            <label style={label}>Save conversation history (this session)</label>
+            <label style={label}>Save conversation history on this device</label>
             <input type="checkbox" checked={s.saveHistory} onChange={(e) => upd({ saveHistory: e.target.checked })} />
-            <p style={{ fontSize: 11, color: '#666' }}>Use New Conversation on the main screen to clear context.</p>
+            <p style={{ fontSize: 11, color: '#666', lineHeight: 1.6 }}>
+              On: the transcript is written to this device&apos;s local app storage so it is still there after a restart. Off: KITT keeps
+              only the current session in memory. Either way the transcript is never sent to the KITT server.
+            </p>
+            <p style={{ fontSize: 11, color: '#666', lineHeight: 1.6 }}>
+              NEW CONVERSATION on the main screen clears the context KITT is using; CLEAR CONVERSATION HISTORY in PRIVACY deletes the
+              saved transcript from this device.
+            </p>
           </div>
         )}
 
@@ -238,12 +247,43 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
 
         {section === 'PRIVACY' && (
           <div>
-            <p style={{ fontSize: 12, color: '#999' }}>
-              Microphone audio is processed locally and sent only to the configured speech provider (browser recognition, or Whisper via the server proxy). Voice text goes to the configured TTS provider. Audio is never recorded or stored unless you enable history.
+            <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
+              <b>Microphone.</b> KITT opens the microphone only while a conversation is active, and releases it when you press END.
+              Nothing listens in the background.
+            </p>
+            <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
+              <b>Your speech.</b> With device speech recognition, your speech is processed by your device and browser speech service.
+              With OpenAI Whisper selected, KITT captures each spoken turn as a short temporary recording in memory and uploads it to
+              OpenAI to be transcribed. That audio is processed to produce text and is not stored by KITT; it does leave your device.
+            </p>
+            <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
+              <b>Conversation text.</b> What you say or type is sent to the AI provider you chose to generate a reply. KITT&apos;s reply
+              text is sent to the voice provider you chose so it can be spoken. Their handling of that data is governed by their own
+              privacy policies.
+            </p>
+            <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
+              <b>Your API keys.</b> Keys are kept in this app. When KITT makes a request they travel over HTTPS to the KITT server, which
+              passes them to your chosen provider for that one request. They are not stored on the server and are not written to logs.
+            </p>
+            <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
+              <b>Conversation history.</b> Held in memory for the current session only. If &ldquo;Save conversation history&rdquo; is on, the
+              transcript is also written to this device&apos;s local app storage so it survives a restart — never to the KITT server.
             </p>
             <label style={label}>Remember API keys on this device (AES-GCM encrypted)</label>
             <input type="checkbox" checked={s.persistSecrets} onChange={(e) => upd({ persistSecrets: e.target.checked })} />
-            <button className="kitt-btn" onClick={onDeleteSecrets} style={{ marginTop: 10 }}>DELETE SAVED KEYS</button>
+            <p style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
+              Off by default: keys then live only until the app closes. On Android these credentials will be held in the device
+              keystore (work in progress).
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+              <button className="kitt-btn" onClick={onDeleteSecrets}>DELETE SAVED KEYS</button>
+              <button className="kitt-btn" onClick={onClearHistory}>CLEAR CONVERSATION HISTORY</button>
+              <button className="kitt-btn" onClick={onResetSetup}>RESET KITT SETUP</button>
+            </div>
+            <p style={{ fontSize: 11, color: '#666', marginTop: 8 }}>
+              DELETE SAVED KEYS removes every stored provider key. CLEAR CONVERSATION HISTORY removes the transcript from this device.
+              RESET KITT SETUP returns every setting to its default — including provider, voice and display choices.
+            </p>
           </div>
         )}
 
