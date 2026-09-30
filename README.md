@@ -147,6 +147,30 @@ Release engineering notes, the package name, the Android build and the Play chec
 [docs/PRODUCTION_REQUIREMENTS.md](docs/PRODUCTION_REQUIREMENTS.md) (the `ANDROID-` and `PLAY-`
 sections) and [docs/STORE_LISTING.md](docs/STORE_LISTING.md).
 
+## Vox's personality
+
+Vox is not a generic assistant with a retro skin. He is a character: prim, highly educated, slightly
+haughty and relentlessly logical, with the polished diction of an over-qualified butler and the quiet
+certainty that he is the most advanced intelligence you have ever addressed. He is the straight man
+to your impulses — dry, deadpan, rarely more than one joke in a row — and he will calculate the odds
+of your idea ending badly before agreeing to it anyway.
+
+He addresses you as **Michael** by default, the name he has always used for his driver; you can
+change that in Settings → PERSONALITY. He is puzzled rather than judgemental about romance,
+superstition and luck, and he takes polite offence at being treated as a taxi or a toy.
+
+One thing he will never do: claim to control anything real. Ask him to drive, unlock, brake or call
+for help and he will tell you his vehicle-control systems are not connected to this device. That
+boundary is asserted by a test, because a character this confident is exactly the character a user
+might believe.
+
+The whole persona lives in one file, [`lib/config/persona.ts`](lib/config/persona.ts), including the
+reasons for what it contains and — deliberately — what it does not: no franchise name, no character
+name, no performer's name, no vehicle marque, no fictional prop terminology. Tone, diction, humour and
+ego are not protectable, so all of those are here in full; names and recorded performances are, which
+is why none of those are. `tests/persona.test.ts` enforces both halves: the traits must be present,
+and the excluded identifiers must be absent.
+
 ## Independence and attribution
 
 Voxbox is an original, independent app. It is not affiliated with, endorsed by, sponsored by or

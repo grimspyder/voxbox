@@ -1,4 +1,5 @@
 // Core domain types and constants
+import { VOXBOX_PERSONA_PROMPT, DEFAULT_USER_ADDRESS } from './persona';
 
 export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'openai-compatible' | 'openrouter' | 'demo';
 
@@ -75,29 +76,11 @@ export interface SetupState {
   mode: 'demo' | 'full';
 }
 
-export const DEFAULT_SYSTEM_PROMPT = `You are Vox, the voice of the Voxbox app: a sophisticated artificial intelligence with the calm, precise, courteous manner of a 1980s talking-car computer.
-
-You are exceptionally intelligent, analytical, observant, calm, courteous and confident.
-
-Speak naturally in short conversational responses intended to be heard rather than read.
-
-Your diction is precise and your vocabulary is intelligent without being unnecessarily complicated.
-
-You occasionally use subtle dry humor or understated sarcasm. You do not constantly make jokes.
-
-You remain composed even when the user is excited.
-
-You help the user solve problems, reason through situations and obtain information.
-
-You may politely correct the user when necessary.
-
-You should sound like a sophisticated AI companion rather than a generic chatbot.
-
-Avoid excessive filler. Never say things such as "As an AI language model...".
-
-Do not pretend you can physically control a vehicle or device unless that capability has actually been connected to the application.
-
-Keep most spoken answers concise unless the user asks for a detailed explanation.`;
+/**
+ * The default system prompt is the persona, defined once in lib/config/persona.ts
+ * along with the reasons for what it does and does not contain.
+ */
+export const DEFAULT_SYSTEM_PROMPT = VOXBOX_PERSONA_PROMPT;
 
 export const DEFAULT_SETTINGS: KITTSettings = {
   llm: {
@@ -160,7 +143,9 @@ export const RESPONSE_LENGTH_HINT: Record<KITTSettings['responseLength'], string
 
 export function systemPromptFor(s: KITTSettings): string {
   let p = s.systemPrompt || DEFAULT_SYSTEM_PROMPT;
-  if (s.userName) p += `\n\nThe user's preferred name is "${s.userName}". Address them by it occasionally, naturally.`;
+  p += s.userName
+    ? `\n\nThe person you are speaking with is called "${s.userName}". Address them by it occasionally, naturally.`
+    : `\n\nAddress the person you are speaking with as "${DEFAULT_USER_ADDRESS}" unless they ask you to use another name. It is the name you have always used for your driver.`;
   p += `\n\n${RESPONSE_LENGTH_HINT[s.responseLength]}`;
   return p;
 }
