@@ -56,6 +56,7 @@ export interface KITTSettings {
   display: DisplayConfig;
   persistSecrets: boolean;
   saveHistory: boolean;
+  setup: SetupState;
 }
 
 export interface DisplayConfig {
@@ -64,6 +65,14 @@ export interface DisplayConfig {
   reducedMotion: boolean;
   showTranscript: boolean;
   fullscreen: boolean;
+}
+
+/** Progress through the first-run wizard, so it can be re-entered later. */
+export interface SetupState {
+  /** True once the user has finished or explicitly skipped setup. */
+  complete: boolean;
+  /** Which experience they chose. */
+  mode: 'demo' | 'full';
 }
 
 export const DEFAULT_SYSTEM_PROMPT = `You are an advanced artificial intelligence modeled after the personality and conversational manner of KITT, the AI from the television series Knight Rider.
@@ -137,6 +146,10 @@ export const DEFAULT_SETTINGS: KITTSettings = {
   },
   persistSecrets: false,
   saveHistory: false,
+  setup: {
+    complete: false,
+    mode: 'demo',
+  },
 };
 
 export const RESPONSE_LENGTH_HINT: Record<KITTSettings['responseLength'], string> = {

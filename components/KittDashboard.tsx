@@ -14,6 +14,7 @@ import { loadHistory, saveHistory as persistHistory, clearHistory } from '@/lib/
 import { MachineSnapshot } from '@/lib/conversation/stateMachine';
 import { computeBarLevels, BarLevels, DEFAULT_TUNING, ModulatorTuning } from '@/lib/audio/modulator';
 import SettingsPanel from './SettingsPanel';
+import SetupWizard from './SetupWizard';
 import { listMics } from '@/lib/stt/mic';
 
 type Status = 'OFFLINE' | 'LISTENING' | 'THINKING' | 'SPEAKING' | 'ERROR';
@@ -37,6 +38,8 @@ export default function KittDashboard() {
   const [settings, setSettings] = useState<KITTSettings>(DEFAULT_SETTINGS);
   const [machine, setMachine] = useState<MachineSnapshot>({ state: 'DISCONNECTED', history: [] });
   const [showSettings, setShowSettings] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
+  const [settingsReady, setSettingsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
   const [interim, setInterim] = useState('');
@@ -56,6 +59,7 @@ export default function KittDashboard() {
     void loadSettings().then((s) => {
       setSettings(s);
       settingsLoadedRef.current = true;
+      setSettingsReady(true);
       // Restore a saved transcript only when the user has opted into storage.
       setTranscript(s.saveHistory ? loadHistory() : []);
     });
@@ -163,6 +167,16 @@ export default function KittDashboard() {
     clearHistory();
     setTranscript([]);
     setInterim('');
+  }, []);
+
+  /** Apply the wizard's outcome and mark setup finished. */
+  const applySetup = useCallback(async (next: KITTSettings) => {
+    setSettings(next);
+    engineRef.current?.updateSettings(next);
+    await saveSettings(next);
+    setShowSetup(false);
+    setSettingsReady(true);
+    setError(null);
   }, []);
 
   /** Return every setting to its default and drop stored credentials (§96). */
@@ -403,11 +417,19 @@ export default function KittDashboard() {
         </div>
       )}
 
+      {(showSetup || (settingsReady && !settings.setup.complete)) && (
+        <SetupWizard initial={settings} onFinish={(next) => void applySetup(next)} />
+      )}
+
       {showSettings && (
         <SettingsPanel
           settings={settings}
           micList={micList}
           onRefreshMics={refreshMics}
+          onRunSetup={() => {
+            setShowSettings(false);
+            setShowSetup(true);
+          }}
           onClose={async (next?: KITTSettings) => {
             if (next) {
               setSettings(next);

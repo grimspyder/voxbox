@@ -8,6 +8,7 @@ import { TTSClient } from '@/lib/tts/client';
 import { AudioPipeline } from '@/lib/audio/pipeline';
 import { maskKey } from '@/lib/config/storage';
 import { testMicrophone } from '@/lib/stt/micTest';
+import { buildSystemCheck, summariseCheck } from '@/lib/setup/readiness';
 
 interface Props {
   settings: KITTSettings;
@@ -17,18 +18,47 @@ interface Props {
   onDeleteSecrets: () => void;
   onClearHistory: () => void;
   onResetSetup: () => void;
+  onRunSetup: () => void;
 }
 
-type Section = 'AI BRAIN' | 'VOICE' | 'SPEECH' | 'AUDIO' | 'PERSONALITY' | 'CONVERSATION' | 'DISPLAY' | 'PRIVACY' | 'ADVANCED';
-const SECTIONS: Section[] = ['AI BRAIN', 'VOICE', 'SPEECH', 'AUDIO', 'PERSONALITY', 'CONVERSATION', 'DISPLAY', 'PRIVACY', 'ADVANCED'];
+type Section =
+  | 'SYSTEM SETUP'
+  | 'AI BRAIN'
+  | 'VOICE'
+  | 'SPEECH'
+  | 'AUDIO'
+  | 'PERSONALITY'
+  | 'CONVERSATION'
+  | 'DISPLAY'
+  | 'PRIVACY'
+  | 'ADVANCED';
+const SECTIONS: Section[] = [
+  'SYSTEM SETUP',
+  'AI BRAIN',
+  'VOICE',
+  'SPEECH',
+  'AUDIO',
+  'PERSONALITY',
+  'CONVERSATION',
+  'DISPLAY',
+  'PRIVACY',
+  'ADVANCED',
+];
 
-export default function SettingsPanel({ settings, micList, onRefreshMics, onClose, onDeleteSecrets, onClearHistory, onResetSetup }: Props) {
+export default function SettingsPanel({ settings, micList, onRefreshMics, onClose, onDeleteSecrets, onClearHistory, onResetSetup, onRunSetup }: Props) {
   const [s, setS] = useState<KITTSettings>({ ...settings });
-  const [section, setSection] = useState<Section>('AI BRAIN');
+  const [section, setSection] = useState<Section>('SYSTEM SETUP');
   const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [testing, setTesting] = useState(false);
   const [micTesting, setMicTesting] = useState(false);
   const [micTestMsg, setMicTestMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // What the health screen reports. Each flag is set only by a real test run in
+  // this session — never assumed from a saved setting.
+  const [aiConnected, setAiConnected] = useState(settings.llm.provider === 'demo');
+  const [voiceConnected, setVoiceConnected] = useState(
+    settings.tts.provider === 'demo' || settings.tts.provider === 'browser',
+  );
+  const [micReady, setMicReady] = useState(false);
 
   const upd = (patch: Partial<KITTSettings>) => setS((prev) => ({ ...prev, ...patch }));
 
@@ -40,6 +70,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
     setTestMsg(null);
     const r = await llmClient.testConnection({ provider: s.llm.provider, apiKey: s.llm.apiKey, model: s.llm.model, baseUrl: s.llm.baseUrl || undefined });
     setTestMsg({ ok: r.ok, text: r.message });
+    setAiConnected(r.ok);
     setTesting(false);
   };
 
@@ -48,6 +79,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
     setMicTestMsg(null);
     const r = await testMicrophone(s.mic.deviceId);
     setMicTestMsg({ ok: r.ok, text: r.message });
+    setMicReady(r.ok);
     setMicTesting(false);
   };
 
@@ -58,9 +90,25 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
     const tts = new TTSClient(pipe);
     const r = await tts.testVoice(s.tts);
     setTestMsg({ ok: r.ok, text: r.message });
+    setVoiceConnected(r.ok);
     pipe.close();
     setTesting(false);
   };
+
+  const facts = {
+    mode: (s.llm.provider === 'demo' ? 'demo' : 'full') as 'demo' | 'full',
+    llmProvider: s.llm.provider,
+    llmKeyPresent: Boolean(s.llm.apiKey || settings.llm.apiKey),
+    llmVerified: aiConnected,
+    ttsProvider: s.tts.provider,
+    voiceId: s.tts.voiceId || settings.tts.voiceId,
+    ttsVerified: voiceConnected,
+    micPermission: micReady ? ('granted' as const) : ('unknown' as const),
+    audioOutputReady: voiceConnected,
+    online: typeof navigator === 'undefined' ? true : navigator.onLine,
+  };
+  const checks = buildSystemCheck(facts);
+  const summary = summariseCheck(checks);
 
   return (
     <div role="dialog" aria-label="Settings" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 50, overflowY: 'auto', padding: '16px' }}>
@@ -69,6 +117,10 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
           <h2 style={{ fontSize: 16, letterSpacing: '0.2em', color: '#ff5050' }}>KITT SETTINGS</h2>
           <button className="kitt-btn" onClick={() => onClose(s)}>CLOSE (SAVE)</button>
         </div>
+        <p style={{ fontSize: 11, color: '#666', margin: '4px 0 0' }}>
+          SYSTEM SETUP holds the simple choices. The other tabs are advanced settings — you never need them to
+          talk with KITT.
+        </p>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '12px 0' }}>
           {SECTIONS.map((sec) => (
@@ -77,6 +129,63 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             </button>
           ))}
         </div>
+
+        {section === 'SYSTEM SETUP' && (
+          <div>
+            <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
+              What KITT needs to talk with you. Each item is checked as you use it — nothing here is assumed.
+            </p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0' }}>
+              {checks.map((c) => (
+                <li
+                  key={c.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '10px 0',
+                    borderBottom: '1px solid #1c1c1c',
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: '#ccc' }}>{c.label}</span>
+                  <span
+                    role="status"
+                    style={{
+                      fontSize: 12,
+                      textAlign: 'right',
+                      color: c.status === 'ok' ? '#7bd87b' : c.status === 'warn' ? '#ff9a3c' : '#ff6b6b',
+                    }}
+                  >
+                    {c.status === 'ok' ? '✓ ' : c.status === 'warn' ? '! ' : '✖ '}
+                    {c.detail}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p style={{ fontSize: 11, color: '#666', lineHeight: 1.6 }}>
+              {summary.ready
+                ? `${summary.passed} of ${checks.length} checks passed.`
+                : 'Fix the item marked ✖ and KITT will be ready.'}
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+              <button className="kitt-btn" onClick={onRunSetup}>
+                RUN SETUP AGAIN
+              </button>
+              <button className="kitt-btn" disabled={testing} onClick={() => void runTestLLM()}>
+                {testing ? 'TESTING…' : 'TEST AI CONNECTION'}
+              </button>
+              <button className="kitt-btn" disabled={micTesting} onClick={() => void runMicTest()}>
+                {micTesting ? 'TESTING…' : 'TEST MICROPHONE'}
+              </button>
+            </div>
+            {micTestMsg && (
+              <p role="status" style={{ fontSize: 12, color: micTestMsg.ok ? '#7bd87b' : '#ff9a3c', marginTop: 8 }}>
+                {micTestMsg.ok ? '✔ ' : '✖ '}
+                {micTestMsg.text}
+              </p>
+            )}
+          </div>
+        )}
 
         {section === 'AI BRAIN' && (
           <div>

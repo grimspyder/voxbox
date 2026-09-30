@@ -72,4 +72,5 @@ export const RATE_LIMITS = {
   llm: { limit: 30, windowMs: 60_000 },
   tts: { limit: 90, windowMs: 60_000 },
   stt: { limit: 12, windowMs: 60_000 },
+  models: { limit: 20, windowMs: 60_000 },
 } as const;
