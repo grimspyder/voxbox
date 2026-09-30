@@ -133,7 +133,23 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: android-actions/setup-android@v3
+      - name: Set up the Android SDK
+        # Done explicitly rather than with android-actions/setup-android: that
+        # action ran `sdkmanager --licenses` interactively on the runner and
+        # stalled at "Review licenses that have not been accepted (y/N)?",
+        # failing the job. GitHub's Ubuntu image already ships the SDK, so the
+        # only jobs here are accepting the licences and installing the two
+        # packages the build needs.
+        run: |
+          SDK=/usr/local/lib/android/sdk
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          SM="$(find "$SDK/cmdline-tools" -maxdepth 3 -name sdkmanager -type f | head -1)"
+          if [ -z "$SM" ]; then echo "::error::sdkmanager not found in the runner image"; exit 1; fi
+          echo "Using $SM"
+          yes | "$SM" --licenses > /dev/null 2>&1 || true
+          "$SM" "platforms;android-36" "build-tools;36.0.0" > /dev/null 2>&1 || true
+          echo "Installed platforms:"; ls "$SDK/platforms"
 
       - name: Install dependencies
         # Same platform-specific optional-dependency caveat as the web job.
