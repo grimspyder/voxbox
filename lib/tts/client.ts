@@ -67,7 +67,7 @@ export class TTSClient {
   }
 
   /**
-   * Demo voice: synthesized "Vocoder KITT" using WebAudio — a formant-ish
+   * Demo voice: synthesized "Vocoder Vox" using WebAudio — a formant-ish
    * robotic tone speaking the rhythm of the sentence. Original synthesis,
    * no licensed audio.
    */

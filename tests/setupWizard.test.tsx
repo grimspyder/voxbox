@@ -36,7 +36,7 @@ const buttonNamed = (name: RegExp) => screen.getByRole('button', { name }) as HT
 
 /** Walk from the welcome screen to the AI step and enter a key. */
 function enterKey(key = KEY) {
-  clickButton(/SET UP FULL KITT/);
+  clickButton(/SET UP FULL VOXBOX/);
   fireEvent.change(screen.getByLabelText(/paste your openai api key/i), { target: { value: key } });
 }
 
@@ -53,14 +53,15 @@ afterEach(cleanup);
 describe('first launch', () => {
   it('welcomes the user with a no-setup path and a full-setup path', () => {
     setup();
-    expect(screen.getByText(/WELCOME TO KITT/i)).toBeTruthy();
+    expect(screen.getByText(/WELCOME TO VOXBOX/i)).toBeTruthy();
     expect(screen.getByText(/No setup required/i)).toBeTruthy();
     expect(screen.getByText(/Connect AI and voice services/i)).toBeTruthy();
   });
 
-  it('states the fan-made disclaimer up front', () => {
+  it('states the independence disclaimer up front', () => {
     setup();
-    expect(screen.getByText(/not affiliated with any rights holder/i)).toBeTruthy();
+    expect(screen.getByText(/not affiliated with, endorsed by or licensed by any rights holder/i)).toBeTruthy();
+    expect(screen.getByText(/contains no audio, imagery or recordings/i)).toBeTruthy();
   });
 
   it('never asks the user to understand assistant jargon', () => {
@@ -71,9 +72,9 @@ describe('first launch', () => {
     }
   });
 
-  it('TRY KITT NOW finishes in demo mode with no further questions asked', () => {
+  it('TRY VOX NOW finishes in demo mode with no further questions asked', () => {
     const { onFinish } = setup();
-    clickButton(/TRY KITT NOW/);
+    clickButton(/TRY VOX NOW/);
     expect(onFinish).toHaveBeenCalledTimes(1);
     const next = onFinish.mock.calls[0][0] as KITTSettings;
     expect(next.llm.provider).toBe('demo');
@@ -85,7 +86,7 @@ describe('first launch', () => {
 describe('AI brain step', () => {
   it('offers provider cards instead of a raw configuration list', () => {
     setup();
-    clickButton(/SET UP FULL KITT/);
+    clickButton(/SET UP FULL VOXBOX/);
     expect(screen.getByText(/CONNECT AI BRAIN/i)).toBeTruthy();
     for (const name of ['OpenAI', 'OpenRouter', 'Anthropic', 'Google Gemini']) {
       expect(screen.getByText(name)).toBeTruthy();
@@ -95,7 +96,7 @@ describe('AI brain step', () => {
 
   it('makes the key field phone-friendly', () => {
     setup();
-    clickButton(/SET UP FULL KITT/);
+    clickButton(/SET UP FULL VOXBOX/);
     const input = screen.getByLabelText(/paste your openai api key/i) as HTMLInputElement;
     expect(input.type).toBe('password');
     expect(input.getAttribute('autocomplete')).toBe('off');
@@ -127,7 +128,7 @@ describe('AI brain step', () => {
 
     await waitFor(() => expect(screen.getByText(/AI connected\./)).toBeTruthy());
     expect(mocks.discoverModels).toHaveBeenCalledWith('openai', KEY);
-    expect(screen.getByText(/KITT picked gpt-4o-mini/)).toBeTruthy();
+    expect(screen.getByText(/Vox picked gpt-4o-mini/)).toBeTruthy();
     expect(buttonNamed(/^CONTINUE$/).disabled).toBe(false);
   });
 
@@ -160,13 +161,13 @@ describe('voice, microphone and readiness', () => {
     clickButton(/TEST CONNECTION/);
     await waitFor(() => expect(screen.getByText(/AI connected\./)).toBeTruthy());
     clickButton(/^CONTINUE$/);
-    await waitFor(() => expect(screen.getByText(/CHOOSE KITT'S VOICE/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/CHOOSE Vox'S VOICE/i)).toBeTruthy());
     return result;
   }
 
   it('explains each voice in plain language', async () => {
     await reachVoiceStep();
-    expect(screen.getByText(/KITT Demo Voice/)).toBeTruthy();
+    expect(screen.getByText(/Vox Demo Voice/)).toBeTruthy();
     expect(screen.getByText(/Device Voice/)).toBeTruthy();
     expect(screen.getByText(/OpenAI Voice/)).toBeTruthy();
     expect(screen.getByText(/Custom Voice/)).toBeTruthy();
@@ -186,24 +187,24 @@ describe('voice, microphone and readiness', () => {
     await reachVoiceStep();
     clickButton(/^CONTINUE$/);
     await waitFor(() => expect(screen.getByText(/^MICROPHONE$/)).toBeTruthy());
-    mocks.startMicMeter.mockRejectedValue(new Error('Microphone permission was blocked. You can still type to KITT.'));
+    mocks.startMicMeter.mockRejectedValue(new Error('Microphone permission was blocked. You can still type to Vox.'));
     clickButton(/ENABLE MICROPHONE/);
-    await waitFor(() => expect(screen.getByText(/still type to KITT\./)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/still type to Vox\./)).toBeTruthy());
     // The user can still reach the end of setup and talk by text.
     expect(buttonNamed(/^CONTINUE$/)).toBeTruthy();
   });
 
-  it('shows the system check, then KITT IS READY, and saves a complete full-AI setup', async () => {
+  it('shows the system check, then VOXBOX IS READY, and saves a complete full-AI setup', async () => {
     const { onFinish } = await reachVoiceStep();
     clickButton(/^CONTINUE$/);
     await waitFor(() => expect(screen.getByText(/^MICROPHONE$/)).toBeTruthy());
     clickButton(/^CONTINUE$/);
 
-    await waitFor(() => expect(screen.getByText(/KITT SYSTEM CHECK/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/VOXBOX SYSTEM CHECK/i)).toBeTruthy());
     for (const label of ['AI Brain', 'Voice', 'Microphone', 'Audio Output', 'Internet']) {
       expect(screen.getByText(label)).toBeTruthy();
     }
-    expect(screen.getByText(/KITT IS READY/i)).toBeTruthy();
+    expect(screen.getByText(/VOXBOX IS READY/i)).toBeTruthy();
     clickButton(/START CONVERSATION/);
 
     const next = onFinish.mock.calls[0][0] as KITTSettings;

@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
   try {
     form = await req.formData();
   } catch {
-    return fail('KITT could not read that recording.', 400);
+    return fail('Vox could not read that recording.', 400);
   }
 
   const file = form.get('audio');
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   const name = file instanceof File ? file.name : 'audio.webm';
   const mime = normaliseMime(file.type, name);
   if (!(ALLOWED_AUDIO_MIME_TYPES as readonly string[]).includes(mime)) {
-    return fail('That audio format is not supported. KITT accepts webm, ogg, mp4/m4a, mp3, wav or flac.', 415);
+    return fail('That audio format is not supported. Vox accepts webm, ogg, mp4/m4a, mp3, wav or flac.', 415);
   }
   if (file.size === 0) return fail('That recording was empty. Try speaking again.', 400);
   if (file.size > LIMITS.stt.maxAudioBytes) {
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
         return fail('Your speech recognition key was rejected. Check it in Setup → Speech.', 502);
       }
       if (res.status === 429) {
-        return fail('Your speech service is rate limiting KITT. Wait a moment and try again.', 502);
+        return fail('Your speech service is rate limiting Vox. Wait a moment and try again.', 502);
       }
       const { message } = consumerProviderError(`transcription error ${res.status} ${raw.slice(0, 200)}`);
       return fail(message, 502);
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     const { message, status } = consumerProviderError(e);
     const friendly = /did not respond in time|temporarily unavailable|could not reach/.test(message)
-      ? 'KITT could not transcribe that recording right now. Check your connection and try again.'
+      ? 'Vox could not transcribe that recording right now. Check your connection and try again.'
       : message;
     return fail(friendly, status);
   }

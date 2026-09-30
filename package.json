@@ -1,5 +1,5 @@
 {
-  "name": "kitt-ai-assistant",
+  "name": "voxbox",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -13,6 +13,7 @@
     "lint": "next lint",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
+    "icons": "node scripts/generate-icons.mjs",
     "android:sync": "npm run build:native && cap sync android",
     "android:debug": "npm run android:sync && node scripts/android-build.mjs assembleDebug",
     "android:bundle": "npm run android:sync && node scripts/android-build.mjs bundleRelease"

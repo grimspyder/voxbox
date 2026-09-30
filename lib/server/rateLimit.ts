@@ -1,6 +1,6 @@
 // Practical abuse protection for the provider proxies.
 //
-// There is no KITT account, so the key is a combination of caller IP and the
+// There is no Vox account, so the key is a combination of caller IP and the
 // app's own installation identifier — enough to stop scripted abuse without
 // building any invasive device fingerprint.
 //

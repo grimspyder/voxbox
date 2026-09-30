@@ -64,10 +64,10 @@ export function firstIssueMessage(error: z.ZodError): string {
   if (!issue) return 'The request could not be validated.';
   if (/unrecognized key/i.test(issue.message)) return 'The request contained unsupported fields.';
   if (issue.code === z.ZodIssueCode.invalid_enum_value || /invalid enum value/i.test(issue.message)) {
-    return 'That provider is not supported by this build of KITT.';
+    return 'That provider is not supported by this build of Vox.';
   }
   if (issue.code === z.ZodIssueCode.too_small && issue.path.includes('messages')) {
-    return 'KITT had nothing to send to the AI service.';
+    return 'Vox had nothing to send to the AI service.';
   }
   return issue.message;
 }

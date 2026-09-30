@@ -13,9 +13,9 @@ const NO_STORE = { 'cache-control': 'no-store', 'x-content-type-options': 'nosni
  * CORS for the native (Capacitor) build, whose web assets are served from a
  * local origin and therefore call this API cross-origin. Empty by default:
  * a same-origin web deployment needs no CORS at all. Configure with
- * KITT_ALLOWED_ORIGINS="https://localhost,capacitor://localhost".
+ * VOXBOX_ALLOWED_ORIGINS="https://localhost,capacitor://localhost".
  */
-const ALLOWED_ORIGINS = (process.env.KITT_ALLOWED_ORIGINS ?? '')
+const ALLOWED_ORIGINS = (process.env.VOXBOX_ALLOWED_ORIGINS ?? '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
@@ -51,7 +51,7 @@ export function enforceRateLimit(req: Request, scope: Scope, extraHeaders: Recor
   const result = checkRateLimit(callerKey(req, scope), limit, windowMs);
   if (result.ok) return null;
   return jsonError(
-    'KITT is receiving too many requests from this device. Please wait a moment and try again.',
+    'Vox is receiving too many requests from this device. Please wait a moment and try again.',
     429,
     {
       ...extraHeaders,
@@ -81,7 +81,7 @@ export async function readJsonBody<S extends z.ZodTypeAny>(
   extraHeaders: Record<string, string> = {},
 ): Promise<BodyResult<z.infer<S>>> {
   if (contentLengthExceeded(req, maxBytes)) {
-    return { ok: false, response: jsonError('That request is too large for KITT to process.', 413, extraHeaders) };
+    return { ok: false, response: jsonError('That request is too large for Vox to process.', 413, extraHeaders) };
   }
   let raw: string;
   try {
@@ -90,7 +90,7 @@ export async function readJsonBody<S extends z.ZodTypeAny>(
     return { ok: false, response: jsonError(malformedMessage, 400, extraHeaders) };
   }
   if (raw.length > maxBytes) {
-    return { ok: false, response: jsonError('That request is too large for KITT to process.', 413, extraHeaders) };
+    return { ok: false, response: jsonError('That request is too large for Vox to process.', 413, extraHeaders) };
   }
   let parsed: unknown;
   try {

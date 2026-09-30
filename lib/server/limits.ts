@@ -1,6 +1,6 @@
 // Hard limits for every server-side provider proxy.
 // These are enforced before any outbound provider call so an unauthenticated
-// client can never turn KITT's proxies into a free, unbounded relay.
+// client can never turn Vox's proxies into a free, unbounded relay.
 
 export const LIMITS = {
   llm: {

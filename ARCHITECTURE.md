@@ -17,7 +17,7 @@ components/
   VoiceModulator.tsx       → three 16-segment LED columns, center-out expansion
   SettingsPanel.tsx        → drawer: AI BRAIN / VOICE / SPEECH / AUDIO / PERSONALITY / CONVERSATION / DISPLAY / PRIVACY / ADVANCED
 lib/
-  config/settings.ts       → types, defaults, KITT system prompt, prompt assembly
+  config/settings.ts       → types, defaults, Vox system prompt, prompt assembly
   config/storage.ts        → settings persistence; AES-GCM-encrypted secrets (device key)
   llm/types.ts             → LLMProvider/TTSProvider/STTProvider interfaces, KITTError, friendly errors
   llm/client.ts            → browser-side client (calls /api/llm; demo handled locally)
@@ -44,7 +44,7 @@ mic → VAD (adaptive threshold) → utterance blob
 ```
 
 ## Key invariants
-- **Only KITT's output audio reaches the display analyser.** Mic audio gets its own analyser (input meter/VAD only).
+- **Only Vox's output audio reaches the display analyser.** Mic audio gets its own analyser (input meter/VAD only).
 - Bars expand **from the center** of each column — never bottom-up.
 - Provider keys are used **server-side only**; stored device-local, AES-GCM encrypted when "remember" is on; masked in UI.
 - State transitions go through the machine table; invalid events are ignored, never scatter booleans.
@@ -57,4 +57,4 @@ mic → VAD (adaptive threshold) → utterance blob
 - Demo voice = original WebAudio formant synthesis (no copyrighted samples).
 
 ## Demo mode
-`provider: demo` (default) needs no keys: canned KITT-flavoured replies streamed on timers, original synth voice, full display/LED functionality. Banner states cloud AI isn't connected.
+`provider: demo` (default) needs no keys: canned Vox-flavoured replies streamed on timers, original synth voice, full display/LED functionality. Banner states cloud AI isn't connected.

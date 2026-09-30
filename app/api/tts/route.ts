@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const limited = enforceRateLimit(req, 'tts', cors);
   if (limited) return limited;
 
-  const body = await readJsonBody(req, ttsRequestSchema, LIMITS.tts.bodyBytes, 'KITT could not read that request.', cors);
+  const body = await readJsonBody(req, ttsRequestSchema, LIMITS.tts.bodyBytes, 'Vox could not read that request.', cors);
   if (!body.ok) return body.response;
   const b = body.data;
   const signal = providerSignal(req.signal, LIMITS.providerTimeoutMs);
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     let res: Response;
     if (b.provider === 'elevenlabs') {
       if (!b.voiceId) {
-        return jsonError('No KITT voice is selected yet. Choose one in Setup → Voice.', 400, cors);
+        return jsonError('No Vox voice is selected yet. Choose one in Setup → Voice.', 400, cors);
       }
       res = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(b.voiceId)}?output_format=mp3_44100_128`,

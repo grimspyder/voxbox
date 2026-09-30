@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   const limited = enforceRateLimit(req, 'models', cors);
   if (limited) return limited;
 
-  const body = await readJsonBody(req, bodySchema, 8 * 1024, 'KITT could not read that request.', cors);
+  const body = await readJsonBody(req, bodySchema, 8 * 1024, 'Vox could not read that request.', cors);
   if (!body.ok) return body.response;
   const { provider, apiKey } = body.data;
 

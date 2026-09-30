@@ -39,7 +39,7 @@
 
     <!-- Permissions -->
 
-    <!-- The only two permissions KITT needs (brief §69). The microphone is used
+    <!-- The only two permissions Vox needs (brief §69). The microphone is used
          exclusively while a conversation is active; there is no background
          listening, so no foreground service or background-audio permission is
          requested. -->
@@ -54,6 +54,6 @@
          capability. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- Devices without a microphone can still install KITT and talk by text. -->
+    <!-- Devices without a microphone can still install Vox and talk by text. -->
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 </manifest>

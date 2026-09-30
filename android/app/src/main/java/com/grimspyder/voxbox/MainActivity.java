@@ -1,4 +1,4 @@
-package com.grimspyder.kittassistant;
+package com.grimspyder.voxbox;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -54,7 +54,7 @@ export function reportCapabilities(): CapabilityReport {
       id: 'microphone',
       label: 'Microphone capture',
       ok: canCaptureAudio,
-      detail: canCaptureAudio ? 'Available.' : `Not available in ${vendor}. KITT can still be used by text.`,
+      detail: canCaptureAudio ? 'Available.' : `Not available in ${vendor}. Vox can still be used by text.`,
     },
     {
       id: 'speech-synthesis',
@@ -62,7 +62,7 @@ export function reportCapabilities(): CapabilityReport {
       ok: canSynthesize,
       detail: canSynthesize
         ? 'Available.'
-        : `Not available in ${vendor}. Choose the KITT demo voice or a cloud voice instead.`,
+        : `Not available in ${vendor}. Choose the Vox demo voice or a cloud voice instead.`,
     },
     {
       id: 'speech-recognition',
@@ -70,13 +70,13 @@ export function reportCapabilities(): CapabilityReport {
       ok: canRecognize,
       detail: canRecognize
         ? 'Available.'
-        : `Not available in ${vendor}. Choose OpenAI Whisper for speech, or type to KITT.`,
+        : `Not available in ${vendor}. Choose OpenAI Whisper for speech, or type to Vox.`,
     },
     {
       id: 'audio-context',
       label: 'Audio output engine',
       ok: canRenderAudio,
-      detail: canRenderAudio ? 'Available.' : 'Not available — KITT could not speak.',
+      detail: canRenderAudio ? 'Available.' : 'Not available — Vox could not speak.',
     },
     {
       id: 'streamed-audio',

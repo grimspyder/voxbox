@@ -50,12 +50,12 @@ export async function POST(req: NextRequest) {
   const limited = enforceRateLimit(req, 'llm', cors);
   if (limited) return limited;
 
-  const body = await readJsonBody(req, llmRequestSchema, LIMITS.llm.bodyBytes, 'KITT could not read that request.', cors);
+  const body = await readJsonBody(req, llmRequestSchema, LIMITS.llm.bodyBytes, 'Vox could not read that request.', cors);
   if (!body.ok) return body.response;
   const { provider, apiKey, model, baseUrl, temperature, maxTokens, messages, stream } = body.data;
 
   const impl = pick(provider);
-  if (!impl) return jsonError('That AI provider is not supported by this build of KITT.', 400, cors);
+  if (!impl) return jsonError('That AI provider is not supported by this build of Vox.', 400, cors);
 
   // Destination resolution. Production providers use fixed allowlisted hosts;
   // the OpenAI-compatible endpoint is developer-only and strictly validated.
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   } else if (provider === 'openai-compatible') {
     if (!CUSTOM_ENDPOINTS_ENABLED) {
       return jsonError(
-        'Custom AI endpoints are disabled in this build of KITT. Choose OpenAI, OpenRouter, Anthropic or Google Gemini instead.',
+        'Custom AI endpoints are disabled in this build of Vox. Choose OpenAI, OpenRouter, Anthropic or Google Gemini instead.',
         403,
         cors,
       );

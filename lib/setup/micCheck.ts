@@ -8,7 +8,7 @@ export interface MicMeter {
 
 export async function startMicMeter(onLevel: (level: number) => void, deviceId?: string): Promise<MicMeter> {
   if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error('This device does not support microphone capture. You can still type to KITT.');
+    throw new Error('This device does not support microphone capture. You can still type to Vox.');
   }
 
   let stream: MediaStream;
@@ -24,12 +24,12 @@ export async function startMicMeter(onLevel: (level: number) => void, deviceId?:
   } catch (e) {
     const name = e instanceof DOMException ? e.name : '';
     if (name === 'NotAllowedError' || name === 'SecurityError') {
-      throw new Error('Microphone permission was blocked. You can still type to KITT.');
+      throw new Error('Microphone permission was blocked. You can still type to Vox.');
     }
     if (name === 'NotFoundError' || name === 'OverconstrainedError') {
-      throw new Error('No microphone was found on this device. You can still type to KITT.');
+      throw new Error('No microphone was found on this device. You can still type to Vox.');
     }
-    throw new Error('KITT could not open the microphone. You can still type to KITT.');
+    throw new Error('Vox could not open the microphone. You can still type to Vox.');
   }
 
   const Ctor: typeof AudioContext =

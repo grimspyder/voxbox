@@ -1,4 +1,4 @@
-# Production gates for KITT AI Assistant.
+# Production gates for Voxbox.
 #
 # Required before any production merge: install, type-check, lint, unit tests,
 # production build, dependency audit. The Android job activates automatically
@@ -121,6 +121,6 @@ jobs:
       - name: Upload the release bundle
         uses: actions/upload-artifact@v4
         with:
-          name: kitt-release-aab
+          name: voxbox-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error

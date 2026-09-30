@@ -129,12 +129,12 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
     <div role="dialog" aria-label="Settings" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 50, overflowY: 'auto', padding: '16px' }}>
       <div style={{ maxWidth: 640, margin: '0 auto', color: '#ccc' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: 16, letterSpacing: '0.2em', color: '#ff5050' }}>KITT SETTINGS</h2>
+          <h2 style={{ fontSize: 16, letterSpacing: '0.2em', color: '#ff5050' }}>VOXBOX SETTINGS</h2>
           <button className="kitt-btn" onClick={() => onClose(s)}>CLOSE (SAVE)</button>
         </div>
         <p style={{ fontSize: 11, color: '#666', margin: '4px 0 0' }}>
           SYSTEM SETUP holds the simple choices. The other tabs are advanced settings — you never need them to
-          talk with KITT.
+          talk with Vox.
         </p>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '12px 0' }}>
@@ -148,7 +148,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
         {section === 'SYSTEM SETUP' && (
           <div>
             <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
-              What KITT needs to talk with you. Each item is checked as you use it — nothing here is assumed.
+              What Vox needs to talk with you. Each item is checked as you use it — nothing here is assumed.
             </p>
             <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0' }}>
               {checks.map((c) => (
@@ -180,7 +180,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             <p style={{ fontSize: 11, color: '#666', lineHeight: 1.6 }}>
               {summary.ready
                 ? `${summary.passed} of ${checks.length} checks passed.`
-                : 'Fix the item marked ✖ and KITT will be ready.'}
+                : 'Fix the item marked ✖ and Vox will be ready.'}
             </p>
 
             {caps.length > 0 && (
@@ -291,7 +291,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             {!deviceVoiceOk && (
               <p style={{ fontSize: 11, color: '#ff9a3c', marginTop: 6 }}>
                 This device&apos;s browser engine provides no built-in voice, so a browser voice cannot be spoken
-                here. Use the KITT demo voice or a cloud voice.
+                here. Use the Vox demo voice or a cloud voice.
               </p>
             )}
             {(s.tts.provider === 'elevenlabs' || s.tts.provider === 'openai') && (
@@ -375,7 +375,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
 
         {section === 'PERSONALITY' && (
           <div>
-            <label style={label}>What KITT calls you</label>
+            <label style={label}>What Vox calls you</label>
             <input style={input} value={s.userName} onChange={(e) => upd({ userName: e.target.value })} placeholder="(optional) your name" />
             <label style={label}>Response length</label>
             <select style={input} value={s.responseLength} onChange={(e) => upd({ responseLength: e.target.value as KITTSettings['responseLength'] })}>
@@ -391,11 +391,11 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             <label style={label}>Save conversation history on this device</label>
             <input type="checkbox" checked={s.saveHistory} onChange={(e) => upd({ saveHistory: e.target.checked })} />
             <p style={{ fontSize: 11, color: '#666', lineHeight: 1.6 }}>
-              On: the transcript is written to this device&apos;s local app storage so it is still there after a restart. Off: KITT keeps
-              only the current session in memory. Either way the transcript is never sent to the KITT server.
+              On: the transcript is written to this device&apos;s local app storage so it is still there after a restart. Off: Vox keeps
+              only the current session in memory. Either way the transcript is never sent to the Vox server.
             </p>
             <p style={{ fontSize: 11, color: '#666', lineHeight: 1.6 }}>
-              NEW CONVERSATION on the main screen clears the context KITT is using; CLEAR CONVERSATION HISTORY in PRIVACY deletes the
+              NEW CONVERSATION on the main screen clears the context Vox is using; CLEAR CONVERSATION HISTORY in PRIVACY deletes the
               saved transcript from this device.
             </p>
           </div>
@@ -417,26 +417,26 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
         {section === 'PRIVACY' && (
           <div>
             <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
-              <b>Microphone.</b> KITT opens the microphone only while a conversation is active, and releases it when you press END.
+              <b>Microphone.</b> Vox opens the microphone only while a conversation is active, and releases it when you press END.
               Nothing listens in the background.
             </p>
             <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
               <b>Your speech.</b> With device speech recognition, your speech is processed by your device and browser speech service.
-              With OpenAI Whisper selected, KITT captures each spoken turn as a short temporary recording in memory and uploads it to
-              OpenAI to be transcribed. That audio is processed to produce text and is not stored by KITT; it does leave your device.
+              With OpenAI Whisper selected, Vox captures each spoken turn as a short temporary recording in memory and uploads it to
+              OpenAI to be transcribed. That audio is processed to produce text and is not stored by Vox; it does leave your device.
             </p>
             <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
-              <b>Conversation text.</b> What you say or type is sent to the AI provider you chose to generate a reply. KITT&apos;s reply
+              <b>Conversation text.</b> What you say or type is sent to the AI provider you chose to generate a reply. Vox&apos;s reply
               text is sent to the voice provider you chose so it can be spoken. Their handling of that data is governed by their own
               privacy policies.
             </p>
             <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
-              <b>Your API keys.</b> Keys are kept in this app. When KITT makes a request they travel over HTTPS to the KITT server, which
+              <b>Your API keys.</b> Keys are kept in this app. When Vox makes a request they travel over HTTPS to the Vox server, which
               passes them to your chosen provider for that one request. They are not stored on the server and are not written to logs.
             </p>
             <p style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>
               <b>Conversation history.</b> Held in memory for the current session only. If &ldquo;Save conversation history&rdquo; is on, the
-              transcript is also written to this device&apos;s local app storage so it survives a restart — never to the KITT server.
+              transcript is also written to this device&apos;s local app storage so it survives a restart — never to the Vox server.
             </p>
             <label style={label}>Remember API keys on this device (AES-GCM encrypted)</label>
             <input type="checkbox" checked={s.persistSecrets} onChange={(e) => upd({ persistSecrets: e.target.checked })} />
@@ -447,18 +447,18 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
               <button className="kitt-btn" onClick={onDeleteSecrets}>DELETE SAVED KEYS</button>
               <button className="kitt-btn" onClick={onClearHistory}>CLEAR CONVERSATION HISTORY</button>
-              <button className="kitt-btn" onClick={onResetSetup}>RESET KITT SETUP</button>
+              <button className="kitt-btn" onClick={onResetSetup}>RESET VOXBOX SETUP</button>
             </div>
             <p style={{ fontSize: 11, color: '#666', marginTop: 8 }}>
               DELETE SAVED KEYS removes every stored provider key. CLEAR CONVERSATION HISTORY removes the transcript from this device.
-              RESET KITT SETUP returns every setting to its default — including provider, voice and display choices.
+              RESET VOXBOX SETUP returns every setting to its default — including provider, voice and display choices.
             </p>
           </div>
         )}
 
         {section === 'ADVANCED' && (
           <div>
-            <label style={label}>KITT system prompt</label>
+            <label style={label}>Vox system prompt</label>
             <textarea style={{ ...input, minHeight: 180, fontFamily: 'monospace', fontSize: 12 }} value={s.systemPrompt} onChange={(e) => upd({ systemPrompt: e.target.value })} />
             <button className="kitt-btn" onClick={() => upd({ systemPrompt: DEFAULT_SYSTEM_PROMPT })} style={{ marginTop: 8 }}>RESET TO DEFAULT</button>
           </div>

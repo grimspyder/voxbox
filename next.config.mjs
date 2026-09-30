@@ -14,7 +14,7 @@
  * The Android client therefore talks to the hosted API, whose origin must be
  * supplied at build time as NEXT_PUBLIC_KITT_API_BASE (see lib/config/apiBase).
  */
-const native = process.env.KITT_NATIVE_BUILD === '1';
+const native = process.env.VOXBOX_NATIVE_BUILD === '1';
 
 const nextConfig = native
   ? {

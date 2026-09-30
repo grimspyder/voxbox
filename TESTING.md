@@ -15,7 +15,7 @@ Build gates: `next build` (compile+lint+types) · `npx tsc --noEmit` — both cl
 | Check | Result |
 |-------|--------|
 | OpenRouter chat completion (key + `openai/gpt-4o-mini`) | 200, "ONLINE" |
-| ElevenLabs TTS (`KITT V1` voice) | 200, 33 KB MP3 |
+| ElevenLabs TTS (`Vox V1` voice) | 200, 33 KB MP3 |
 
 ## Browser E2E (production server, Playwright-driven Chrome)
 
@@ -24,7 +24,7 @@ Build gates: `next build` (compile+lint+types) · `npx tsc --noEmit` — both cl
 | 1 | App renders dashboard: labels, pills, 3×16 segments | PASS (screenshot vs reference) |
 | 2 | START CONVERSATION → LISTENING (mic-denied reported, text input stays usable) | PASS |
 | 3 | TEST CONNECTION (OpenRouter) | PASS "Connection successful" |
-| 4 | TEST VOICE (ElevenLabs KITT V1) | PASS "Voice test complete" |
+| 4 | TEST VOICE (ElevenLabs Vox V1) | PASS "Voice test complete" |
 | 5 | Text utterance → THINKING → SPEAKING | PASS — 2.0s (OpenRouter), 3.0s (ElevenLabs configured) |
 | 6 | Spoken response ends → returns to IDLE/OFFLINE | PASS |
 | 7 | INTERRUPT during SPEAKING → immediate stop | PASS |

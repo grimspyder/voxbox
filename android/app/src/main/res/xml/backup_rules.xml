@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  KITT stores user-supplied provider keys on the device. Nothing from the app's
+  Vox stores user-supplied provider keys on the device. Nothing from the app's
   private storage is ever included in a cloud backup, so a key cannot be lifted
   off the device that way.
 -->

@@ -4,7 +4,7 @@ import { safeUpstreamMessage, scrubSecrets } from './redact';
 
 export interface ConsumerError {
   message: string;
-  /** HTTP status KITT returns to its own client. */
+  /** HTTP status Vox returns to its own client. */
   status: number;
 }
 
@@ -20,7 +20,7 @@ const MAPPINGS: Mapped[] = [
   { pattern: /\b402\b|insufficient|quota|billing|credit/i, message: 'Your AI account has reached its usage limit. Check your provider billing.' },
   { pattern: /\b404\b|model.*not found|does not exist/i, message: 'That AI model is not available on your account. Choose a different model in Advanced Settings.' },
   { pattern: /timeout|timed out|etimedout|econnreset|socket hang up/i, message: 'The AI service did not respond in time. Try again.' },
-  { pattern: /fetch failed|enotfound|eai_again|network|offline/i, message: 'KITT could not reach the AI service. Check your connection and try again.' },
+  { pattern: /fetch failed|enotfound|eai_again|network|offline/i, message: 'Vox could not reach the AI service. Check your connection and try again.' },
   { pattern: /\b5\d\d\b|overloaded|unavailable/i, message: 'The AI service is temporarily unavailable. Try again shortly.' },
 ];
 
@@ -43,10 +43,10 @@ export function consumerVoiceError(e: unknown): ConsumerError {
     return { message: 'Your voice service has reached its usage limit.', status: 502 };
   }
   if (/AI service is receiving too many requests/.test(mapped.message)) {
-    return { message: 'Your voice service is rate limiting KITT. Wait a moment and try again.', status: 502 };
+    return { message: 'Your voice service is rate limiting Vox. Wait a moment and try again.', status: 502 };
   }
   if (/AI service could not complete/.test(mapped.message)) {
-    return { message: 'KITT could not synthesize that speech. Try again.', status: 502 };
+    return { message: 'Vox could not synthesize that speech. Try again.', status: 502 };
   }
   return mapped;
 }

@@ -1,22 +1,22 @@
-# KITT AI Assistant
+# Voxbox
 
-A voice-first entertainment app: talk to KITT and he answers out loud, while the original
+A voice-first entertainment app: talk to Vox and he answers out loud, while the original
 three-bar voice modulator pulses in time with his voice.
 
-KITT is a **nostalgia and entertainment experience**. It is not a vehicle system, a driving
+Vox is a **nostalgia and entertainment experience**. It is not a vehicle system, a driving
 assistant, a navigation app, a home-automation controller or an emergency service, and it does
-not pretend to be: KITT will tell you plainly that his vehicle-control systems are not connected.
+not pretend to be: Vox will tell you plainly that his vehicle-control systems are not connected.
 
 ## What it does
 
-- **Speak and KITT answers.** Hands-free conversation with end-of-turn detection, barge-in
+- **Speak and Vox answers.** Hands-free conversation with end-of-turn detection, barge-in
   interruption, and a text fallback when you would rather type.
-- **Demo mode works immediately.** No account, no API key, no setup: canned KITT-style replies
+- **Demo mode works immediately.** No account, no API key, no setup: canned Vox-style replies
   in an original synthesised voice, with the full display and modulator running.
 - **Full mode connects your own AI and voice services.** Bring your own key for OpenAI,
   OpenRouter, Anthropic or Google Gemini, and for ElevenLabs or OpenAI speech.
 - **The display is the point.** Three 16-segment columns expanding from the centre, exactly as
-  the original prop did, driven only by KITT's own output audio — never by your microphone.
+  the original prop did, driven only by Vox's own output audio — never by your microphone.
 
 ## Architecture
 
@@ -56,7 +56,7 @@ npm ci
 npm run dev          # http://localhost:3000
 ```
 
-KITT opens in demo mode. Nothing else is required to see and hear him.
+Vox opens in demo mode. Nothing else is required to see and hear him.
 
 ## Quality gates
 
@@ -93,16 +93,16 @@ Open ⚙ SETTINGS and choose a provider, paste your key, then press **TEST CONNE
 | Google Gemini | https://aistudio.google.com/app/apikey |
 | ElevenLabs | https://elevenlabs.io/app/settings/api-keys |
 
-**Your provider bills you separately for API usage.** KITT does not create the provider account
+**Your provider bills you separately for API usage.** Vox does not create the provider account
 and does not pay for calls.
 
 ### Server environment variables
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `NEXT_PUBLIC_KITT_API_BASE` | Absolute API origin for the native (Capacitor) build. Empty means same-origin, which is correct for the web build. | empty |
-| `KITT_ALLOWED_ORIGINS` | Comma-separated origins allowed to call the API cross-origin from the native shell, e.g. `https://localhost,capacitor://localhost`. | empty |
-| `KITT_ALLOW_CUSTOM_ENDPOINTS` | `true` permits user-supplied OpenAI-compatible base URLs (developer/self-hosted builds only). Strictly validated either way. | `false` |
+| `NEXT_PUBLIC_VOXBOX_API_BASE` | Absolute API origin for the native (Capacitor) build. Empty means same-origin, which is correct for the web build. | empty |
+| `VOXBOX_ALLOWED_ORIGINS` | Comma-separated origins allowed to call the API cross-origin from the native shell, e.g. `https://localhost,capacitor://localhost`. | empty |
+| `VOXBOX_ALLOW_CUSTOM_ENDPOINTS` | `true` permits user-supplied OpenAI-compatible base URLs (developer/self-hosted builds only). Strictly validated either way. | `false` |
 
 No provider key is ever configured on the server. Keys are supplied by the user and used for the
 single request they belong to.
@@ -134,8 +134,8 @@ defects in [BUGS.md](BUGS.md).
 
 The microphone is open only while a conversation is active. Your speech is transcribed either by
 your device's speech service or, if you choose Whisper, by a short temporary recording uploaded to
-OpenAI. Your words go to the AI provider you chose and KITT's reply goes to the voice provider you
-chose. Your API keys travel over HTTPS to the KITT server and are passed to the provider for that
+OpenAI. Your words go to the AI provider you chose and Vox's reply goes to the voice provider you
+chose. Your API keys travel over HTTPS to the Vox server and are passed to the provider for that
 one request; they are not stored server-side and not logged. The transcript stays in memory for the
 session, or in local app storage if you turn on "Save conversation history" — never on the server.
 The full policy is in [docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md) and the per-data-type Play
@@ -147,6 +147,19 @@ Release engineering notes, the package name, the Android build and the Play chec
 [docs/PRODUCTION_REQUIREMENTS.md](docs/PRODUCTION_REQUIREMENTS.md) (the `ANDROID-` and `PLAY-`
 sections) and [docs/STORE_LISTING.md](docs/STORE_LISTING.md).
 
-KITT is an independent fan-made tribute. It is not affiliated with, endorsed by or licensed by any
-rights holder of the television series it draws its inspiration from, and contains no audio,
-imagery or voice recordings from it.
+## Independence and attribution
+
+Voxbox is an original, independent app. It is not affiliated with, endorsed by, sponsored by or
+licensed by any rights holder of the films or television series that inspired its retro styling,
+and it ships no audio, imagery, footage or voice recordings from any such work. The visual design,
+the LED bar display, the synthesised demo voice and the icon were all created for this project;
+the interface is an original recreation rather than a copy of any prop or artwork.
+
+The only things this project borrows are ideas: a calm and precise AI persona, a three-column LED
+level display, and the general aesthetic of 1980s talking-vehicle science fiction. Ideas and styles
+are not protected; names, logos and recorded performances are, which is why none of those appear
+here.
+
+The Play listing title is **Voxbox** — deliberately not a franchise name, and deliberately
+differentiated from the unrelated "VoxBox" audio apps already on Play (see
+[docs/STORE_LISTING.md](docs/STORE_LISTING.md)).

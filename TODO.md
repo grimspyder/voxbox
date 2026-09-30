@@ -1,4 +1,4 @@
-# TODO — KITT-AI-Assistant
+# TODO — Voxbox
 
 Re-audited against `production-android` on 2026-09-30. Requirement IDs refer to
 `docs/PRODUCTION_REQUIREMENTS.md`.
@@ -6,7 +6,7 @@ Re-audited against `production-android` on 2026-09-30. Requirement IDs refer to
 ## Done
 
 - [x] Scaffold, repo, CI-relevant gates (build/lint/tsc/test)
-- [x] KITT dashboard replica (labels, pills, 3×16-segment modulator, centre-out)
+- [x] Vox dashboard replica (labels, pills, 3×16-segment modulator, centre-out)
 - [x] Provider abstractions: LLM (OpenAI/OpenRouter/Anthropic/Gemini/OpenAI-compatible/demo),
       TTS (ElevenLabs/OpenAI/browser/demo), STT (browser/Whisper)
 - [x] Server-side key proxying, encrypted secret storage, masked UI
@@ -18,7 +18,7 @@ Re-audited against `production-android` on 2026-09-30. Requirement IDs refer to
 - [x] Runtime validation, size caps, rate limits and SSRF protection on all three proxies (SEC-01..04)
 - [x] Credential scrubbing and consumer-worded provider errors (SEC-05, AI-05)
 - [x] Privacy copy corrected to match real behaviour; save-history implemented (PRIVACY-01/02)
-- [x] Clear conversation history + reset KITT setup controls (PRIVACY-03)
+- [x] Clear conversation history + reset Vox setup controls (PRIVACY-03)
 - [x] CI workflow with a secret scan and a gated Android job (PERF-05)
 - [x] README rewritten for a real project (brief §80)
 - [x] RESEARCH.md, BUGS.md, TESTING.md, ARCHITECTURE.md maintained
@@ -33,7 +33,7 @@ Re-audited against `production-android` on 2026-09-30. Requirement IDs refer to
 - [ ] Advanced Settings reclassification (SETUP-15)
 - [ ] Mobile: 6 widths, portrait/landscape, safe areas, 44 px touch targets, decluttered main screen
       (MOBILE-01..06)
-- [ ] Android: Capacitor shell, package `com.grimspyder.kittassistant`, signed AAB, minimal
+- [ ] Android: Capacitor shell, package `com.grimspyder.voxbox`, signed AAB, minimal
       permissions (ANDROID-02..10)
 - [ ] Native Android speech recognition adapter (STT-01/02)
 - [ ] Keystore-backed credential storage and the re-entry story (SEC-09/10)

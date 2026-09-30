@@ -2,7 +2,7 @@
 //
 // When "Save conversation history" is on, the transcript is written to this
 // device's local storage so it survives a reload. It is never uploaded to the
-// KITT server and never sent to a provider except as the ordinary conversation
+// Vox server and never sent to a provider except as the ordinary conversation
 // context the user is actively continuing. Turning the option off or clearing
 // history removes it completely.
 

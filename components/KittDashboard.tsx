@@ -1,4 +1,4 @@
-// KITT main dashboard — authentic 3-bar voice modulator layout per reference.
+// Vox main dashboard — authentic 3-bar voice modulator layout per reference.
 // Left: AIR, OIL, P1, P2. Right: S1, S2, P3, P4.
 // Center-bottom: AUTO CRUISE, NORMAL CRUISE, PURSUIT.
 // Deep black background; no cards/gradients/modern UI.
@@ -95,7 +95,7 @@ export default function KittDashboard() {
     const dt = Math.min(100, now - (lastTickRef.current || now));
     lastTickRef.current = now;
 
-    // Only KITT's OUTPUT audio drives the bars.
+    // Only Vox's OUTPUT audio drives the bars.
     let bands = { low: 0, mid: 0, high: 0 };
     let rms = 0;
     if (engine.pipeline.hasOutput) {
@@ -154,7 +154,7 @@ export default function KittDashboard() {
     engineRef.current?.interrupt();
   }, []);
 
-  /** Clear the conversation context KITT is using (keeps the session running). */
+  /** Clear the conversation context Vox is using (keeps the session running). */
   const newConversation = useCallback(() => {
     engineRef.current?.newConversation();
     setInterim('');
@@ -386,7 +386,7 @@ export default function KittDashboard() {
           <button onClick={newConversation} className="kitt-btn" aria-label="Start a new conversation and clear context">✳ NEW CONVERSATION</button>
         )}
         {machine.state === 'SPEAKING' && (
-          <button onClick={interrupt} className="kitt-btn" aria-label="Interrupt KITT">✖ INTERRUPT</button>
+          <button onClick={interrupt} className="kitt-btn" aria-label="Interrupt Vox">✖ INTERRUPT</button>
         )}
         <button onClick={toggleLedTest} className="kitt-btn" aria-label="Test the LED modulator">◉ TEST LEDS</button>
         <button onClick={toggleFullscreen} className="kitt-btn" aria-label="Toggle full screen">⛶ FULLSCREEN</button>
@@ -405,7 +405,7 @@ export default function KittDashboard() {
         }}
         style={{ display: 'flex', gap: 6, width: '100%', maxWidth: 480 }}
       >
-        <input name="msg" placeholder="Type instead (optional)…" aria-label="Message KITT by text" className="kitt-input" />
+        <input name="msg" placeholder="Type instead (optional)…" aria-label="Message Vox by text" className="kitt-input" />
         <button type="submit" className="kitt-btn">SEND</button>
       </form>
 
@@ -430,10 +430,10 @@ export default function KittDashboard() {
         <div style={{ width: 'min(92vw, 640px)', maxHeight: 180, overflowY: 'auto', fontSize: 13, color: '#aaa', margin: '8px 0' }}>
           {transcript.map((t, i) => (
             <div key={i} style={{ color: t.role === 'user' ? '#8ab4f8' : '#ff6b6b' }}>
-              <b>{t.role === 'user' ? 'You' : 'KITT'}:</b> {t.text}
+              <b>{t.role === 'user' ? 'You' : 'Vox'}:</b> {t.text}
             </div>
           ))}
-          {interim && <div style={{ color: '#666' }}><b>KITT:</b> {interim}</div>}
+          {interim && <div style={{ color: '#666' }}><b>Vox:</b> {interim}</div>}
         </div>
       )}
 

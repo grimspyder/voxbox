@@ -2,13 +2,13 @@
 //
 // The developer setting lets a user point the SERVER at an arbitrary host, so a
 // bare "does it look like a URL" check is not enough: it would let anyone turn
-// KITT's proxy into an internal-network scanner. The consumer build therefore
+// Vox's proxy into an internal-network scanner. The consumer build therefore
 // refuses custom endpoints entirely unless the deployment explicitly opts in.
 
 import { PROVIDER_HOSTS } from './limits';
 
-/** Set KITT_ALLOW_CUSTOM_ENDPOINTS=true only in a developer/self-hosted build. */
-export const CUSTOM_ENDPOINTS_ENABLED = process.env.KITT_ALLOW_CUSTOM_ENDPOINTS === 'true';
+/** Set VOXBOX_ALLOW_CUSTOM_ENDPOINTS=true only in a developer/self-hosted build. */
+export const CUSTOM_ENDPOINTS_ENABLED = process.env.VOXBOX_ALLOW_CUSTOM_ENDPOINTS === 'true';
 
 const BLOCKED_HOSTNAMES = new Set([
   'localhost',

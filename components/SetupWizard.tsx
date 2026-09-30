@@ -159,8 +159,8 @@ export default function SetupWizard({ initial, onFinish }: Props) {
     setModels(found.models.map((m) => m.id));
     setModelNote(
       found.ok && found.models.length
-        ? `You have ${found.models.length} models available. KITT picked ${chosen} for conversation — you can change it later under Advanced Settings.`
-        : `KITT will use ${chosen}. You can change the model later under Advanced Settings.`,
+        ? `You have ${found.models.length} models available. Vox picked ${chosen} for conversation — you can change it later under Advanced Settings.`
+        : `Vox will use ${chosen}. You can change the model later under Advanced Settings.`,
     );
     setAiResult({ ok: true, text: 'AI connected.' });
     setTestingAi(false);
@@ -225,7 +225,7 @@ export default function SetupWizard({ initial, onFinish }: Props) {
       );
     } catch (e) {
       stopMeter();
-      setMicResult({ ok: false, text: e instanceof Error ? e.message : 'KITT could not open the microphone.' });
+      setMicResult({ ok: false, text: e instanceof Error ? e.message : 'Vox could not open the microphone.' });
     }
   }, [draft.mic.deviceId, stopMeter]);
 
@@ -249,7 +249,7 @@ export default function SetupWizard({ initial, onFinish }: Props) {
   return (
     <div
       role="dialog"
-      aria-label="KITT setup"
+      aria-label="Vox setup"
       style={{
         position: 'fixed',
         inset: 0,
@@ -264,7 +264,7 @@ export default function SetupWizard({ initial, onFinish }: Props) {
         {stage !== 'welcome' && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
             <span style={{ ...mute, letterSpacing: '0.2em' }}>
-              KITT SETUP · STEP {Math.min(stepIndex, 4)} OF 4
+              Vox SETUP · STEP {Math.min(stepIndex, 4)} OF 4
             </span>
             <button style={{ ...btn, minHeight: 40, padding: '8px 12px' }} onClick={skipWithCurrent}>
               SKIP FOR NOW
@@ -274,14 +274,14 @@ export default function SetupWizard({ initial, onFinish }: Props) {
 
         {stage === 'welcome' && (
           <div>
-            <h1 style={h1}>WELCOME TO KITT</h1>
+            <h1 style={h1}>WELCOME TO VOXBOX</h1>
             <p style={body}>
-              KITT is an entertainment companion: talk to him and he answers out loud while the original voice
+              Vox is an entertainment companion: talk to him and he answers out loud while the original voice
               modulator moves with his voice.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
               <button style={{ ...primary, textAlign: 'left' }} onClick={tryDemoNow}>
-                ▶ TRY KITT NOW
+                ▶ TRY VOX NOW
                 <span style={{ display: 'block', ...mute, marginTop: 4 }}>No setup required</span>
               </button>
               <button
@@ -297,13 +297,14 @@ export default function SetupWizard({ initial, onFinish }: Props) {
                   setStage('ai');
                 }}
               >
-                ⚙ SET UP FULL KITT
+                ⚙ SET UP FULL VOXBOX
                 <span style={{ display: 'block', ...mute, marginTop: 4 }}>Connect AI and voice services</span>
               </button>
             </div>
             <p style={{ ...mute, marginTop: 20 }}>
-              KITT is a fan-made tribute and is not affiliated with any rights holder of the television series that
-              inspired him. Demo mode uses KITT&apos;s own synthesised voice.
+              Voxbox is an original, independent app. It is not affiliated with, endorsed by or licensed by any rights
+              holder of the films or television series that inspired its retro styling, and it contains no audio,
+              imagery or recordings from them. Demo mode uses a voice synthesised on this device.
             </p>
           </div>
         )}
@@ -311,9 +312,9 @@ export default function SetupWizard({ initial, onFinish }: Props) {
         {stage === 'ai' && (
           <div>
             <h1 style={h1}>CONNECT AI BRAIN</h1>
-            <p style={body}>Choose the service that will give KITT his intelligence. You supply your own account key.</p>
+            <p style={body}>Choose the service that will give Vox his intelligence. You supply your own account key.</p>
             <p style={{ ...mute, marginTop: 8 }}>
-              Your provider bills you separately for whatever KITT uses. KITT does not create that account and does not pay
+              Your provider bills you separately for whatever Vox uses. Vox does not create that account and does not pay
               for your calls. Pricing changes often, so check your provider&apos;s own page.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
@@ -406,7 +407,7 @@ export default function SetupWizard({ initial, onFinish }: Props) {
                 {aiResult?.ok && modelNote && <p style={{ ...mute, marginTop: 6 }}>{modelNote}</p>}
                 {aiResult?.ok && models.length > 0 && (
                   <label style={{ display: 'block', marginTop: 12 }}>
-                    <span style={{ ...mute, display: 'block', marginBottom: 4 }}>AI model (optional — KITT already chose one)</span>
+                    <span style={{ ...mute, display: 'block', marginBottom: 4 }}>AI model (optional — Vox already chose one)</span>
                     <select
                       style={input}
                       value={draft.llm.model}
@@ -433,7 +434,7 @@ export default function SetupWizard({ initial, onFinish }: Props) {
             </div>
             {!aiVerified && (
               <p style={{ ...mute, marginTop: 8 }}>
-                KITT needs a working connection to continue, or you can TRY KITT NOW in demo mode instead.
+                Voxbox needs a working connection to continue, or you can TRY VOX NOW in demo mode instead.
               </p>
             )}
           </div>
@@ -441,8 +442,8 @@ export default function SetupWizard({ initial, onFinish }: Props) {
 
         {stage === 'voice' && (
           <div>
-            <h1 style={h1}>CHOOSE KITT&apos;S VOICE</h1>
-            <p style={body}>How should KITT sound when he answers you?</p>
+            <h1 style={h1}>CHOOSE Vox&apos;S VOICE</h1>
+            <p style={body}>How should Vox sound when he answers you?</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
               {voices.map((option) => {
                 const active = draft.tts.provider === option.provider;
@@ -542,7 +543,7 @@ export default function SetupWizard({ initial, onFinish }: Props) {
 
             {draft.tts.provider === 'demo' && (
               <p style={{ ...mute, marginTop: 12 }}>
-                KITT&apos;s demo voice is generated on this device — no account, no cost, and it works offline.
+                Vox&apos;s demo voice is generated on this device — no account, no cost, and it works offline.
               </p>
             )}
 
@@ -561,7 +562,7 @@ export default function SetupWizard({ initial, onFinish }: Props) {
           <div>
             <h1 style={h1}>MICROPHONE</h1>
             <p style={body}>
-              KITT needs microphone access so he can hear you. The microphone is only open while you are talking with
+              Vox needs microphone access so he can hear you. The microphone is only open while you are talking with
               him, and it closes the moment you press END.
             </p>
             <button
@@ -596,13 +597,13 @@ export default function SetupWizard({ initial, onFinish }: Props) {
                 CONTINUE
               </button>
             </div>
-            <p style={{ ...mute, marginTop: 8 }}>You can type to KITT instead if you prefer not to use the microphone.</p>
+            <p style={{ ...mute, marginTop: 8 }}>You can type to Vox instead if you prefer not to use the microphone.</p>
           </div>
         )}
 
         {stage === 'check' && (
           <div>
-            <h1 style={h1}>KITT SYSTEM CHECK</h1>
+            <h1 style={h1}>VOXBOX SYSTEM CHECK</h1>
             <ul style={{ listStyle: 'none', padding: 0, marginTop: 12 }}>
               {checks.map((c) => (
                 <li
@@ -638,7 +639,7 @@ export default function SetupWizard({ initial, onFinish }: Props) {
 
             {summary.ready ? (
               <>
-                <h2 style={{ ...h1, fontSize: 20, marginTop: 20 }}>KITT IS READY</h2>
+                <h2 style={{ ...h1, fontSize: 20, marginTop: 20 }}>VOXBOX IS READY</h2>
                 <button
                   style={{ ...primary, width: '100%', marginTop: 8 }}
                   onClick={() =>

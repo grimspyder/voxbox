@@ -12,14 +12,14 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * `androidScheme: 'https'` matters twice over:
  *   - the WebView origin becomes https://localhost, which is a secure context,
  *     and getUserMedia refuses to run outside one;
- *   - the hosted API must list that exact origin in KITT_ALLOWED_ORIGINS.
+ *   - the hosted API must list that exact origin in VOXBOX_ALLOWED_ORIGINS.
  */
 const config: CapacitorConfig = {
-  appId: 'com.grimspyder.kittassistant',
-  appName: 'KITT',
+  appId: 'com.grimspyder.voxbox',
+  appName: 'Voxbox',
   webDir: 'out',
   android: {
-    // KITT is a black screen; a white WebView background would flash on launch.
+    // Vox is a black screen; a white WebView background would flash on launch.
     backgroundColor: '#000000',
     allowMixedContent: false,
     webContentsDebuggingEnabled: false,

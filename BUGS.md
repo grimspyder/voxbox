@@ -1,6 +1,6 @@
 # BUGS.md — Defect Tracking
 
-Severity: P0 app unusable · P1 critical KITT experience broken · P2 important functionality broken · P3 cosmetic
+Severity: P0 app unusable · P1 critical Vox experience broken · P2 important functionality broken · P3 cosmetic
 
 Re-audited against `production-android` on 2026-09-30. Fixed entries keep their commit hash; entries
 that were still open at that audit are marked with the audit date so nothing is preserved on trust.

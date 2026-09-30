@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'KITT — Voice AI Assistant',
-  description: 'A voice-first AI assistant inspired by the classic 1982 Knight Industries Two Thousand interface.',
+  title: 'Voxbox Retro AI',
+  description: 'A voice-first AI companion with a retro LED voice modulator display. Talk, and it answers out loud.',
 };
 
 export const viewport: Viewport = {

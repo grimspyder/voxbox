@@ -1,4 +1,4 @@
-// The KITT system check shown at the end of setup and on the post-setup health
+// The Vox system check shown at the end of setup and on the post-setup health
 // screen. Pure functions so the wizard's verdicts are unit-testable without a
 // browser, a microphone or a network.
 
@@ -26,7 +26,7 @@ export interface SetupFacts {
 }
 
 const VOICE_LABEL: Record<string, string> = {
-  demo: 'KITT demo voice',
+  demo: 'Vox demo voice',
   browser: 'device voice',
   openai: 'OpenAI voice',
   elevenlabs: 'custom voice',
@@ -73,7 +73,7 @@ function micCheck(f: SetupFacts): CheckItem {
       id: 'microphone',
       label: 'Microphone',
       status: 'warn',
-      detail: 'Blocked — you can still type to KITT.',
+      detail: 'Blocked — you can still type to Vox.',
     };
   }
   return { id: 'microphone', label: 'Microphone', status: 'warn', detail: 'Not checked yet.' };
@@ -98,7 +98,7 @@ export function buildSystemCheck(f: SetupFacts): CheckItem[] {
         ? 'Online.'
         : f.mode === 'demo'
           ? 'Offline — demo mode still works.'
-          : 'Offline — KITT needs a connection for your AI service.',
+          : 'Offline — Vox needs a connection for your AI service.',
     },
   ];
 }

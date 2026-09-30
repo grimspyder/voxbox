@@ -29,8 +29,8 @@ export function voiceOptions(): VoiceAvailability[] {
   return [
     {
       provider: 'demo',
-      name: 'KITT Demo Voice',
-      blurb: 'KITT’s own synthesised voice. Free, and works offline.',
+      name: 'Vox Demo Voice',
+      blurb: 'Vox’s own synthesised voice. Free, and works offline.',
       available: true,
     },
     {

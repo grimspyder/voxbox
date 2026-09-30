@@ -35,12 +35,12 @@ export async function discoverModels(provider: string, apiKey: string): Promise<
   try {
     const res = await postJson('/api/llm/models', { provider, apiKey });
     if (!res.ok) {
-      return { ok: false, models: [], recommended: null, message: await errorMessage(res, 'KITT could not read your model list.') };
+      return { ok: false, models: [], recommended: null, message: await errorMessage(res, 'Vox could not read your model list.') };
     }
     const json = (await res.json()) as { models?: ModelOption[]; recommended?: string | null };
     return { ok: true, models: json.models ?? [], recommended: json.recommended ?? null };
   } catch {
-    return { ok: false, models: [], recommended: null, message: 'KITT could not reach the AI service. Check your connection.' };
+    return { ok: false, models: [], recommended: null, message: 'Vox could not reach the AI service. Check your connection.' };
   }
 }
 
@@ -61,12 +61,12 @@ export async function discoverVoices(provider: string, apiKey: string): Promise<
   try {
     const res = await postJson('/api/tts/voices', { provider, apiKey });
     if (!res.ok) {
-      return { ok: false, voices: [], requiresChoice: false, message: await errorMessage(res, 'KITT could not read your voice list.') };
+      return { ok: false, voices: [], requiresChoice: false, message: await errorMessage(res, 'Vox could not read your voice list.') };
     }
     const json = (await res.json()) as { voices?: VoiceOption[]; requiresChoice?: boolean };
     return { ok: true, voices: json.voices ?? [], requiresChoice: Boolean(json.requiresChoice) };
   } catch {
-    return { ok: false, voices: [], requiresChoice: false, message: 'KITT could not reach the voice service. Check your connection.' };
+    return { ok: false, voices: [], requiresChoice: false, message: 'Vox could not reach the voice service. Check your connection.' };
   }
 }
 
