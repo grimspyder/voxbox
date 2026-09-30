@@ -1,6 +1,7 @@
 // Client-side TTS. Streams from /api/tts (or demo synthesized voice).
 import { TTSConfig } from '../config/settings';
 import { AudioPipeline } from '../audio/pipeline';
+import { apiUrl, apiHeaders } from '../config/apiBase';
 
 export class TTSClient {
   constructor(private pipeline: AudioPipeline) {}
@@ -17,10 +18,10 @@ export class TTSClient {
       await this.speakBrowser(trimmed, cfg);
       return;
     }
-    const res = await fetch('/api/tts', {
+    const res = await fetch(apiUrl('/api/tts'), {
       method: 'POST',
       signal,
-      headers: { 'content-type': 'application/json' },
+      headers: apiHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify({
         provider: cfg.provider,
         apiKey: cfg.apiKey,

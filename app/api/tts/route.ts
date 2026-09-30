@@ -1,63 +1,67 @@
-// TTS server route: proxies ElevenLabs / OpenAI TTS. Streams audio bytes
-// straight through; the key is used server-side only.
+// Server route: TTS proxy (ElevenLabs / OpenAI). Streams audio bytes straight
+// through; the key is used server-side only, never logged, never echoed back.
+//
+// Hardened per §44: the route is rate limited, the body is schema validated,
+// and the spoken text is capped so this can never become an unlimited
+// arbitrary text-to-speech relay.
 import { NextRequest, NextResponse } from 'next/server';
+import { LIMITS } from '@/lib/server/limits';
+import { ttsRequestSchema } from '@/lib/server/schemas';
+import { readJsonBody, jsonError, enforceRateLimit, providerSignal, NO_STORE_HEADERS, corsHeaders, handlePreflight } from '@/lib/server/http';
+import { consumerVoiceError } from '@/lib/server/providerErrors';
+import { safeUpstreamMessage } from '@/lib/server/redact';
 
 export const runtime = 'nodejs';
 
-interface Body {
-  provider: 'elevenlabs' | 'openai';
-  apiKey: string;
-  voiceId: string;
-  model: string;
-  text: string;
-  stability: number;
-  similarityBoost: number;
-  style: number;
-  speed: number;
-  speakerBoost: boolean;
+export async function OPTIONS(req: NextRequest) {
+  return handlePreflight(req) ?? jsonError('Method not allowed.', 405);
 }
 
 export async function POST(req: NextRequest) {
-  let b: Body;
-  try {
-    b = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Malformed request.' }, { status: 400 });
-  }
-  if (!b.apiKey) return NextResponse.json({ error: 'No voice API key configured.' }, { status: 401 });
-  if (!b.text?.trim()) return NextResponse.json({ error: 'No text to speak.' }, { status: 400 });
+  const cors = corsHeaders(req);
+  const limited = enforceRateLimit(req, 'tts', cors);
+  if (limited) return limited;
 
-  const upstream = new AbortController();
-  req.signal.addEventListener('abort', () => upstream.abort());
+  const body = await readJsonBody(req, ttsRequestSchema, LIMITS.tts.bodyBytes, 'KITT could not read that request.', cors);
+  if (!body.ok) return body.response;
+  const b = body.data;
+  const signal = providerSignal(req.signal, LIMITS.providerTimeoutMs);
 
   try {
     let res: Response;
     if (b.provider === 'elevenlabs') {
-      if (!b.voiceId) return NextResponse.json({ error: 'No voice ID configured.' }, { status: 400 });
-      res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(b.voiceId)}?output_format=mp3_44100_128`, {
-        method: 'POST',
-        signal: upstream.signal,
-        headers: {
-          'xi-api-key': b.apiKey,
-          'content-type': 'application/json',
-          accept: 'audio/mpeg',
-        },
-        body: JSON.stringify({
-          text: b.text,
-          model_id: b.model || 'eleven_turbo_v2_5',
-          voice_settings: {
-            stability: b.stability,
-            similarity_boost: b.similarityBoost,
-            style: b.style,
-            use_speaker_boost: b.speakerBoost,
-            speed: b.speed,
+      if (!b.voiceId) {
+        return jsonError('No KITT voice is selected yet. Choose one in Setup → Voice.', 400, cors);
+      }
+      res = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(b.voiceId)}?output_format=mp3_44100_128`,
+        {
+          method: 'POST',
+          signal,
+          redirect: 'error',
+          headers: {
+            'xi-api-key': b.apiKey,
+            'content-type': 'application/json',
+            accept: 'audio/mpeg',
           },
-        }),
-      });
+          body: JSON.stringify({
+            text: b.text,
+            model_id: b.model || 'eleven_turbo_v2_5',
+            voice_settings: {
+              stability: b.stability,
+              similarity_boost: b.similarityBoost,
+              style: b.style,
+              use_speaker_boost: b.speakerBoost,
+              speed: b.speed,
+            },
+          }),
+        },
+      );
     } else {
       res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
-        signal: upstream.signal,
+        signal,
+        redirect: 'error',
         headers: {
           authorization: `Bearer ${b.apiKey}`,
           'content-type': 'application/json',
@@ -71,24 +75,26 @@ export async function POST(req: NextRequest) {
         }),
       });
     }
+
     if (!res.ok || !res.body) {
-      const text = await res.text().catch(() => '');
-      let msg = `Voice provider error ${res.status}`;
-      try {
-        const j = JSON.parse(text);
-        msg = j?.detail?.message || j?.error?.message || j?.detail || msg;
-      } catch {
-        /* keep default */
-      }
-      if (res.status === 401) msg = 'Invalid voice API key. Check Settings.';
-      if (res.status === 429) msg = 'Voice provider rate limit reached.';
-      return NextResponse.json({ error: String(msg).slice(0, 300) }, { status: 502 });
+      const raw = await res.text().catch(() => '');
+      // Status-only mapping first: never relay provider prose that could echo
+      // request content, and never relay headers.
+      const mapped = consumerVoiceError(`voice provider error ${res.status} ${raw.slice(0, 400)}`);
+      const fallback =
+        res.status === 401
+          ? 'Your voice key was rejected. Check it in Setup → Voice.'
+          : `Your voice service returned an error (${res.status}).`;
+      const message = /AI service could not complete/.test(mapped.message)
+        ? safeUpstreamMessage(raw, fallback, 160)
+        : mapped.message;
+      return jsonError(message, 502, cors);
     }
     return new NextResponse(res.body, {
-      headers: { 'content-type': 'audio/mpeg', 'cache-control': 'no-store' },
+      headers: { ...NO_STORE_HEADERS, ...cors, 'content-type': 'audio/mpeg' },
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Voice synthesis failed.';
-    return NextResponse.json({ error: msg }, { status: 502 });
+    const { message, status } = consumerVoiceError(e);
+    return jsonError(message, status, cors);
   }
 }

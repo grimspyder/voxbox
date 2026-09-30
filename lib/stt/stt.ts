@@ -1,5 +1,6 @@
 // STT: browser Web Speech API (default) or OpenAI Whisper via /api/stt.
 import { STTConfig } from '../config/settings';
+import { apiUrl, apiHeaders } from '../config/apiBase';
 
 export interface BrowserRecognitionHandlers {
   onResult: (text: string, isFinal: boolean) => void;
@@ -97,9 +98,9 @@ export async function whisperTranscribe(audio: Blob, cfg: STTConfig): Promise<st
   form.append('audio', audio, 'speech.webm');
   form.append('model', cfg.model || 'whisper-1');
   form.append('language', cfg.language || 'en');
-  const res = await fetch('/api/stt', {
+  const res = await fetch(apiUrl('/api/stt'), {
     method: 'POST',
-    headers: { 'x-stt-key': cfg.apiKey },
+    headers: apiHeaders({ 'x-stt-key': cfg.apiKey }),
     body: form,
   });
   if (!res.ok) {

@@ -10,11 +10,14 @@ export class GeminiProvider {
     const contents = messages
       .filter((m) => m.role !== 'system')
       .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
-    const url = `${BASE}/models/${encodeURIComponent(cfg.model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(cfg.apiKey)}`;
+    // The key travels in a header, never in the query string: a key in the URL
+    // ends up in provider and intermediary access logs.
+    const url = `${BASE}/models/${encodeURIComponent(cfg.model)}:streamGenerateContent?alt=sse`;
     const res = await fetch(url, {
       method: 'POST',
       signal,
-      headers: { 'content-type': 'application/json' },
+      redirect: 'error',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': cfg.apiKey },
       body: JSON.stringify({
         contents,
         systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
