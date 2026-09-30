@@ -300,13 +300,29 @@ export default function KittDashboard() {
   const red = '#e01414';
 
   return (
-    <div className="kitt-root" style={{ background: '#000', minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#ddd', overflow: 'hidden' }}>
+    <div
+      className="kitt-root"
+      style={{
+        background: '#000',
+        minHeight: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#ddd',
+        overflowX: 'hidden',
+        // Nothing important may sit under a notch, camera cutout, rounded
+        // corner or the gesture bar (brief §30).
+        paddingTop: 'max(8px, env(safe-area-inset-top))',
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
+        paddingLeft: 'max(8px, env(safe-area-inset-left))',
+        paddingRight: 'max(8px, env(safe-area-inset-right))',
+      }}
+    >
+      <div className="kitt-stage">
       <div
         className="kitt-display"
         style={{
-          position: 'relative',
-          width: 'min(92vw, 640px)',
-          aspectRatio: '4/3',
           background: '#000',
           padding: '4%',
           boxSizing: 'border-box',
@@ -344,7 +360,10 @@ export default function KittDashboard() {
         </div>
       </div>
 
-      {/* Status + controls below the display (subtle, not part of the replica) */}
+      {/* Status + controls sit beside the display in landscape and below it in
+          portrait, so the replica panel is never stretched out of proportion. */}
+      <div className="kitt-side">
+      {/* Status row (subtle, not part of the replica) */}
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', margin: '12px 0 4px', flexWrap: 'wrap', justifyContent: 'center' }}>
         <span style={{ color: STATUS_COLOR[status], fontFamily: 'monospace', letterSpacing: '0.15em', fontSize: 13 }}>
           ● {STATUS_LABEL[status]}
@@ -357,7 +376,7 @@ export default function KittDashboard() {
         {latency && <span style={{ color: '#666', fontSize: 11 }}>first-audio: {latency}</span>}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+      <div className="kitt-buttons" style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
         {machine.state === 'DISCONNECTED' ? (
           <button onClick={() => void startConversation()} className="kitt-btn">▶ START CONVERSATION</button>
         ) : (
@@ -384,10 +403,9 @@ export default function KittDashboard() {
             input.value = '';
           }
         }}
-        style={{ display: 'flex', gap: 6, width: 'min(92vw, 480px)' }}
+        style={{ display: 'flex', gap: 6, width: '100%', maxWidth: 480 }}
       >
-        <input name="msg" placeholder="Type instead (optional)…" aria-label="Message KITT by text"
-          style={{ flex: 1, background: '#0a0a0a', border: '1px solid #333', color: '#ccc', padding: '8px 10px', borderRadius: 4 }} />
+        <input name="msg" placeholder="Type instead (optional)…" aria-label="Message KITT by text" className="kitt-input" />
         <button type="submit" className="kitt-btn">SEND</button>
       </form>
 
@@ -405,6 +423,8 @@ export default function KittDashboard() {
           <div style={{ width: `${Math.min(100, inputLevel * 100)}%`, height: '100%', background: '#ffd400', borderRadius: 2 }} />
         </div>
       )}
+      </div>
+      </div>
 
       {settings.display.showTranscript && (
         <div style={{ width: 'min(92vw, 640px)', maxHeight: 180, overflowY: 'auto', fontSize: 13, color: '#aaa', margin: '8px 0' }}>
@@ -452,16 +472,69 @@ export default function KittDashboard() {
           background: #151515;
           border: 1px solid #3a3a3a;
           color: #bbb;
-          padding: 6px 14px;
-          border-radius: 4px;
+          padding: 12px 16px;
+          border-radius: 6px;
           font-family: monospace;
           letter-spacing: 0.08em;
           cursor: pointer;
-          font-size: 12px;
+          font-size: 14px;
+          /* Comfortable finger target on a phone (brief §31). */
+          min-height: 48px;
+          touch-action: manipulation;
         }
         .kitt-btn:hover { border-color: #ff1a1a; color: #ff5050; }
-        @media (max-width: 480px) {
-          .kitt-display { width: 96vw; }
+        .kitt-btn:focus-visible { outline: 2px solid #ffd400; outline-offset: 2px; }
+        .kitt-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .kitt-display {
+          position: relative;
+          width: min(92vw, 640px);
+          /* The replica panel keeps its 4:3 proportions in every orientation. */
+          aspect-ratio: 4 / 3;
+        }
+
+        .kitt-stage {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          width: 100%;
+        }
+        .kitt-side {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+        }
+
+        .kitt-input {
+          flex: 1;
+          min-height: 48px;
+          background: #0a0a0a;
+          border: 1px solid #333;
+          color: #ccc;
+          padding: 12px 14px;
+          border-radius: 6px;
+          /* 16px stops mobile browsers zooming the page when it is focused. */
+          font-size: 16px;
+        }
+
+        @media (orientation: landscape) and (max-height: 600px) {
+          /* Landscape should feel natural for this dashboard: the panel takes
+             the height and the controls move into a column beside it, rather
+             than the 4:3 panel being stretched until labels distort (§29).
+             The column gets a definite width so its rows can wrap inside it
+             instead of being clipped at the screen edge. */
+          .kitt-stage { flex-direction: row; align-items: center; gap: 18px; }
+          .kitt-display { width: auto; height: min(78dvh, 62vw); }
+          .kitt-side { width: min(46vw, 440px); }
+          .kitt-side form { max-width: 100%; }
+        }
+
+        @media (max-width: 400px) {
+          .kitt-btn { padding: 12px 11px; font-size: 13px; }
         }
       `}</style>
     </div>
