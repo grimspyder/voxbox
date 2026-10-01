@@ -4,7 +4,33 @@ import { AudioPipeline } from '../audio/pipeline';
 import { apiUrl, apiHeaders } from '../config/apiBase';
 
 export class TTSClient {
+  private pending: (() => void) | null = null;
+
   constructor(private pipeline: AudioPipeline) {}
+
+  /**
+   * Silence any in-flight browser speech immediately.
+   *
+   * Two things happen here, and both matter:
+   *  - speechSynthesis.cancel() is what actually stops the device voice. Without
+   *    it, INTERRUPT only stopped the cloud-audio path, and the browser voice
+   *    kept talking over the user — interruption was broken for that provider.
+   *  - the awaiting speakBrowser() promise is resolved, because a cancelled
+   *    utterance never fires onend, which would leave the TTS pump awaiting for
+   *    ever and the engine unable to listen again.
+   */
+  stop(): void {
+    if (typeof speechSynthesis !== 'undefined') {
+      try {
+        speechSynthesis.cancel();
+      } catch {
+        /* nothing to cancel */
+      }
+    }
+    const pending = this.pending;
+    this.pending = null;
+    pending?.();
+  }
 
   /** Synthesize + stream-play. Resolves when playback completes. */
   async speak(text: string, cfg: TTSConfig, signal?: AbortSignal): Promise<void> {
@@ -52,8 +78,16 @@ export class TTSClient {
       const u = new SpeechSynthesisUtterance(text);
       u.rate = 0.95 * cfg.speed;
       u.pitch = 0.85; // mature male presentation
-      u.onend = () => resolve();
-      u.onerror = (e) => reject(new Error(`Browser speech error: ${e.error}`));
+      // stop() resolves this if speech is cancelled mid-utterance.
+      this.pending = resolve;
+      u.onend = () => {
+        this.pending = null;
+        resolve();
+      };
+      u.onerror = (e) => {
+        this.pending = null;
+        reject(new Error(`Browser speech error: ${e.error}`));
+      };
       speechSynthesis.speak(u);
       this.pipeline.marks.firstPlayback = performance.now();
       // Note: speechSynthesis audio cannot be routed through WebAudio analyser;

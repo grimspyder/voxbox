@@ -17,9 +17,9 @@ const KEY = 'sk-testtesttesttesttest';
 
 let install = 0;
 function jsonRequest(path: string, body: unknown, headers: Record<string, string> = {}): NextRequest {
-  return new NextRequest(`https://kitt.test${path}`, {
+  return new NextRequest(`https://voxbox.test${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-kitt-install-id': `test${install}`, ...headers },
+    headers: { 'content-type': 'application/json', 'x-voxbox-install-id': `test${install}`, ...headers },
     body: typeof body === 'string' ? body : JSON.stringify(body),
   });
 }
@@ -98,7 +98,7 @@ describe('POST /api/llm', () => {
   });
 
   it('rate limits repeated requests from one installation', async () => {
-    const headers = { 'x-kitt-install-id': 'fixed-install' };
+    const headers = { 'x-voxbox-install-id': 'fixed-install' };
     let last = 0;
     for (let i = 0; i < 32; i++) {
       const res = await llmPost(jsonRequest('/api/llm', { ...validLlmBody, provider: 'nope' }, headers));
@@ -107,8 +107,22 @@ describe('POST /api/llm', () => {
     expect(last).toBe(429);
   });
 
+  // The test above passes even if the installation header is ignored, because
+  // every request would simply share one bucket. This one fails in that case,
+  // which is the point: it asserts the header is actually read for keying.
+  it('gives each installation its own budget rather than one shared bucket', async () => {
+    const first = { 'x-voxbox-install-id': 'installation-one' };
+    for (let i = 0; i < 31; i++) {
+      await llmPost(jsonRequest('/api/llm', { ...validLlmBody, provider: 'nope' }, first));
+    }
+    const other = await llmPost(
+      jsonRequest('/api/llm', { ...validLlmBody, provider: 'nope' }, { 'x-voxbox-install-id': 'installation-two' }),
+    );
+    expect(other.status).not.toBe(429);
+  });
+
   it('answers CORS preflight with 204', async () => {
-    const res = await llmOptions(new NextRequest('https://kitt.test/api/llm', { method: 'OPTIONS' }));
+    const res = await llmOptions(new NextRequest('https://voxbox.test/api/llm', { method: 'OPTIONS' }));
     expect(res.status).toBe(204);
   });
 });
@@ -153,9 +167,9 @@ describe('POST /api/stt', () => {
   }): NextRequest {
     const { key = KEY, contentType = 'multipart/form-data', audio, name = 'speech.webm' } = options;
     if (contentType !== 'multipart/form-data') {
-      return new NextRequest('https://kitt.test/api/stt', {
+      return new NextRequest('https://voxbox.test/api/stt', {
         method: 'POST',
-        headers: { 'content-type': contentType, ...(key ? { 'x-stt-key': key } : {}), 'x-kitt-install-id': `test${install}` },
+        headers: { 'content-type': contentType, ...(key ? { 'x-stt-key': key } : {}), 'x-voxbox-install-id': `test${install}` },
         body: 'raw',
       });
     }
@@ -164,9 +178,9 @@ describe('POST /api/stt', () => {
       const blob = typeof audio === 'string' ? new Blob([new Uint8Array([1, 2, 3])], { type: audio }) : audio;
       form.append('audio', blob, name);
     }
-    return new NextRequest('https://kitt.test/api/stt', {
+    return new NextRequest('https://voxbox.test/api/stt', {
       method: 'POST',
-      headers: { ...(key ? { 'x-stt-key': key } : {}), 'x-kitt-install-id': `test${install}` },
+      headers: { ...(key ? { 'x-stt-key': key } : {}), 'x-voxbox-install-id': `test${install}` },
       body: form,
     });
   }
@@ -199,12 +213,12 @@ describe('POST /api/stt', () => {
   });
 
   it('refuses bodies that declare an oversized upload', () => {
-    const big = new Request('https://kitt.test/api/stt', {
+    const big = new Request('https://voxbox.test/api/stt', {
       method: 'POST',
       headers: { 'content-length': String(64 * 1024 * 1024) },
     });
     expect(contentLengthExceeded(big, 12 * 1024 * 1024)).toBe(true);
-    const small = new Request('https://kitt.test/api/stt', {
+    const small = new Request('https://voxbox.test/api/stt', {
       method: 'POST',
       headers: { 'content-length': '1024' },
     });
