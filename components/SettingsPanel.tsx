@@ -10,6 +10,7 @@ import { maskKey } from '@/lib/config/storage';
 import { testMicrophone } from '@/lib/stt/micTest';
 import { buildSystemCheck, summariseCheck } from '@/lib/setup/readiness';
 import { reportCapabilities, Capability } from '@/lib/setup/capabilities';
+import { secretStoreBackend, SecretStoreBackend } from '@/lib/config/secureStore';
 
 interface Props {
   settings: KITTSettings;
@@ -70,6 +71,20 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
     const report = reportCapabilities();
     setCaps(report.capabilities);
     setCapSummary(report.summary);
+  }, []);
+
+  // Which store actually holds the user's keys. Reported rather than assumed:
+  // the Android Keystore and the browser store are not equally protective, and
+  // the app should not imply otherwise.
+  const [backend, setBackend] = useState<SecretStoreBackend | null>(null);
+  useEffect(() => {
+    let active = true;
+    void secretStoreBackend().then((result) => {
+      if (active) setBackend(result);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const upd = (patch: Partial<KITTSettings>) => setS((prev) => ({ ...prev, ...patch }));
@@ -218,6 +233,26 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
                 </ul>
                 <p style={{ fontSize: 10, color: '#555', wordBreak: 'break-word' }}>{capSummary}</p>
               </>
+            )}
+
+            {backend && (
+              <>
+                <label style={label}>CREDENTIAL STORAGE</label>
+                <p style={{ fontSize: 12, color: '#bbb' }}>
+                  {backend.kind === 'keystore'
+                    ? `Android Keystore${backend.hardwareBacked ? ' — hardware-backed key' : ' — software-backed on this device'}`
+                    : backend.kind === 'web-crypto'
+                      ? 'Encrypted in this browser’s storage. A browser has no keystore, so this is weaker than the Android build: anyone using this device can read both the key and the encrypted data.'
+                      : 'This session only — nothing is written to disk.'}
+                </p>
+              </>
+            )}
+
+            {settings.secretsNeedReentry && (
+              <p role="status" style={{ fontSize: 12, color: '#ff9a3c' }}>
+                For your security, keys saved by an earlier version were removed rather than carried over. Please
+                re-enter your key in AI BRAIN.
+              </p>
             )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
               <button className="kitt-btn" onClick={onRunSetup}>

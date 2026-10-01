@@ -57,6 +57,11 @@ export interface KITTSettings {
   display: DisplayConfig;
   persistSecrets: boolean;
   saveHistory: boolean;
+  /**
+   * Set when weakly protected credentials were removed rather than migrated, so
+   * the UI can ask the user to re-enter them once (brief §40).
+   */
+  secretsNeedReentry: boolean;
   setup: SetupState;
 }
 
@@ -129,6 +134,7 @@ export const DEFAULT_SETTINGS: KITTSettings = {
   },
   persistSecrets: false,
   saveHistory: false,
+  secretsNeedReentry: false,
   setup: {
     complete: false,
     mode: 'demo',

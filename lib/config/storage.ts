@@ -1,13 +1,15 @@
-// Settings persistence with secret-safe storage.
-// BYOK secrets are session-only by default. If persistSecrets is true, they
-// are stored encrypted via the Web Crypto API (AES-GCM, key derived from a
-// random device key kept separately, not in the same record as the ciphertext).
+// Settings persistence.
+//
+// Non-secret settings live in localStorage. Secrets never do — they go through
+// lib/config/secureStore.ts, which uses the Android Keystore on the native build
+// and the browser's Web Crypto on the web build. This module no longer knows how
+// secrets are protected, only that it must hand them over and keep them out of
+// the settings record.
 
 import { KITTSettings, DEFAULT_SETTINGS } from './settings';
+import { loadSecrets, saveSecrets, deleteAllSecrets, purgeLegacyWebSecrets, StoredSecrets } from './secureStore';
 
 const SETTINGS_KEY = 'kitt.settings.v1';
-const ENC_BLOB_KEY = 'kitt.secrets.v1';
-const DEVICE_KEY = 'kitt.devicekey.v1';
 
 export type StoredSettings = Omit<KITTSettings, 'llm' | 'tts' | 'stt'> & {
     llm: Omit<KITTSettings['llm'], 'apiKey'>;
@@ -25,69 +27,38 @@ function stripSecrets(s: KITTSettings): StoredSettings {
   } as unknown as StoredSettings;
 }
 
-async function getDeviceKey(): Promise<CryptoKey | null> {
-  try {
-    let raw = localStorage.getItem(DEVICE_KEY);
-    if (!raw) {
-      const bytes = crypto.getRandomValues(new Uint8Array(32));
-      raw = btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(''));
-      localStorage.setItem(DEVICE_KEY, raw);
-    }
-    const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
-    return await crypto.subtle.importKey('raw', bytes as unknown as BufferSource, 'AES-GCM', false, ['encrypt', 'decrypt']);
-  } catch {
-    return null;
+/** The keys that should be persisted, or an empty set when the user opted out. */
+function collectSecrets(s: KITTSettings): StoredSecrets {
+  const secrets: StoredSecrets = {};
+  if (s.persistSecrets) {
+    if (s.llm.apiKey) secrets.llm = s.llm.apiKey;
+    if (s.tts.apiKey) secrets.tts = s.tts.apiKey;
+    if (s.stt.apiKey) secrets.stt = s.stt.apiKey;
   }
+  return secrets;
 }
 
-async function encryptJson(obj: unknown): Promise<string | null> {
-  const key = await getDeviceKey();
-  if (!key) return null;
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const data = new TextEncoder().encode(JSON.stringify(obj));
-  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as unknown as BufferSource }, key, data as unknown as BufferSource);
-  const out = new Uint8Array(iv.length + ct.byteLength);
-  out.set(iv, 0);
-  out.set(new Uint8Array(ct), iv.length);
-  return btoa(Array.from(out, (b) => String.fromCharCode(b)).join(''));
-}
-
-async function decryptJson<T>(blob: string): Promise<T | null> {
-  const key = await getDeviceKey();
-  if (!key) return null;
+function writeSettings(s: KITTSettings): void {
   try {
-    const bytes = Uint8Array.from(atob(blob), (c) => c.charCodeAt(0));
-    const iv = bytes.slice(0, 12);
-    const ct = bytes.slice(12);
-    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as unknown as BufferSource }, key, ct as unknown as BufferSource);
-    return JSON.parse(new TextDecoder().decode(pt)) as T;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(stripSecrets(s)));
   } catch {
-    return null;
+    /* storage full or unavailable: settings simply are not persisted */
   }
-}
-
-interface SecretBlob {
-  llm?: string;
-  tts?: string;
-  stt?: string;
 }
 
 export async function saveSettings(s: KITTSettings): Promise<void> {
-  const clean = stripSecrets(s);
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(clean));
-  const blob: SecretBlob = {};
-  if (s.persistSecrets) {
-    if (s.llm.apiKey) blob.llm = s.llm.apiKey;
-    if (s.tts.apiKey) blob.tts = s.tts.apiKey;
-    if (s.stt.apiKey) blob.stt = s.stt.apiKey;
+  const secrets = collectSecrets(s);
+  const stored = await saveSecrets(secrets);
+
+  if (!stored && Object.keys(secrets).length > 0) {
+    // Never fall back to plaintext: the keys stay in memory for this session, and
+    // the user must not be told their key was saved when it was not.
+    console.warn('[voxbox] secrets could not be stored securely; they are kept for this session only');
   }
-  const enc = await encryptJson(blob);
-  if (enc) {
-    localStorage.setItem(ENC_BLOB_KEY, enc);
-  } else if (s.persistSecrets && Object.keys(blob).length) {
-    // crypto unavailable: refuse to persist plaintext
-    console.warn('[kitt] crypto unavailable; secrets kept session-only');
-  }
+
+  // Once a key has actually been stored, the "please re-enter" notice is spent.
+  const next = stored && Object.keys(secrets).length > 0 ? { ...s, secretsNeedReentry: false } : s;
+  writeSettings(next);
 }
 
 export async function loadSettings(): Promise<KITTSettings> {
@@ -110,20 +81,25 @@ export async function loadSettings(): Promise<KITTSettings> {
   } catch {
     s = { ...DEFAULT_SETTINGS };
   }
-  // merge secrets
+
+  // On the native build, weakly protected credentials left behind by a previous
+  // web install are removed rather than copied up into the Keystore (brief §40).
+  // The user is asked to re-enter, once.
+  if (purgeLegacyWebSecrets()) {
+    s = { ...s, secretsNeedReentry: true };
+  }
+
   try {
-    const enc = localStorage.getItem(ENC_BLOB_KEY);
-    if (enc) {
-      const blob = await decryptJson<SecretBlob>(enc);
-      if (blob) {
-        if (blob.llm) s.llm = { ...s.llm, apiKey: blob.llm };
-        if (blob.tts) s.tts = { ...s.tts, apiKey: blob.tts };
-        if (blob.stt) s.stt = { ...s.stt, apiKey: blob.stt };
-      }
-    }
+    const secrets = await loadSecrets();
+    if (secrets.llm) s.llm = { ...s.llm, apiKey: secrets.llm };
+    if (secrets.tts) s.tts = { ...s.tts, apiKey: secrets.tts };
+    if (secrets.stt) s.stt = { ...s.stt, apiKey: secrets.stt };
+    // A key came back, so any previously stored notice is stale.
+    if (secrets.llm || secrets.tts || secrets.stt) s = { ...s, secretsNeedReentry: false };
   } catch {
     /* secrets unavailable — session-only */
   }
+
   return s;
 }
 
@@ -134,6 +110,5 @@ export function maskKey(k: string): string {
 }
 
 export async function deleteSecrets(): Promise<void> {
-  localStorage.removeItem(ENC_BLOB_KEY);
-  localStorage.removeItem(DEVICE_KEY);
+  await deleteAllSecrets();
 }
