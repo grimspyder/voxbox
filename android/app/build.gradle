@@ -1,5 +1,17 @@
 apply plugin: 'com.android.application'
 
+// Signing material lives in android/keystore/keystore.properties, which is
+// gitignored: the keystore itself and its passwords must never be committed
+// (production requirements §67). When the file is absent — a fresh clone, or CI —
+// the release build still succeeds but produces an UNSIGNED bundle, so nothing
+// unsigned can be mistaken for a release candidate.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("keystore/keystore.properties")
+def hasSigningMaterial = keystorePropertiesFile.exists()
+if (hasSigningMaterial) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.grimspyder.voxbox"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,10 +28,28 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasSigningMaterial) {
+            release {
+                // storeFile is written relative to the properties file
+                // (android/keystore/), while Gradle resolves file() relative to
+                // the app module — so it must be re-anchored, or the build fails
+                // with "Keystore file ... not found" for a file that exists.
+                def storePath = file("${rootProject.projectDir}/keystore/${keystoreProperties['storeFile']}")
+                storeFile storePath
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasSigningMaterial) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
