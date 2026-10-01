@@ -49,5 +49,5 @@ export function installationId(): string {
 /** Headers to attach to every Vox API call. */
 export function apiHeaders(extra?: Record<string, string>): Record<string, string> {
   const id = installationId();
-  return { ...(id ? { 'x-kitt-install-id': id } : {}), ...(extra ?? {}) };
+  return { ...(id ? { 'x-voxbox-install-id': id } : {}), ...(extra ?? {}) };
 }

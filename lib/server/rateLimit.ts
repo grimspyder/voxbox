@@ -64,7 +64,7 @@ interface HeaderCarrier {
 export function callerKey(req: HeaderCarrier, scope: string): string {
   const forwarded = req.headers.get('x-forwarded-for') ?? '';
   const ip = (forwarded.split(',')[0] || req.headers.get('x-real-ip') || 'unknown').trim().slice(0, 64);
-  const install = (req.headers.get('x-kitt-install-id') ?? 'none').trim().slice(0, 64);
+  const install = (req.headers.get('x-voxbox-install-id') ?? 'none').trim().slice(0, 64);
   return `${scope}:${ip}:${install}`;
 }
 

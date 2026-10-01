@@ -25,7 +25,7 @@ export function corsHeaders(req: Request): Record<string, string> {
   if (!origin || !ALLOWED_ORIGINS.includes(origin)) return {};
   return {
     'access-control-allow-origin': origin,
-    'access-control-allow-headers': 'content-type, x-stt-key, x-kitt-install-id',
+    'access-control-allow-headers': 'content-type, x-stt-key, x-voxbox-install-id',
     'access-control-allow-methods': 'POST, OPTIONS',
     'access-control-max-age': '600',
     vary: 'Origin',
