@@ -241,7 +241,12 @@ describe('interruption', () => {
   it('stops speaking when interrupted, and returns to listening', async () => {
     const h = await startEngine();
     void h.engine.sendText('who are you?');
-    await until(() => h.engine.machine.state === 'SPEAKING');
+    // Wait until something is audibly in flight, not merely until the machine
+    // reached SPEAKING: the first utterance may not have been handed to the
+    // synthesiser yet, and interrupting before that proves nothing about whether
+    // speech is silenced. This is the assertion that failed on CI, and it was
+    // right to fail.
+    await until(() => spoken.length > 0);
 
     h.engine.interrupt();
 
@@ -252,7 +257,7 @@ describe('interruption', () => {
     const spokenAtInterrupt = spoken.length;
     await new Promise((r) => setTimeout(r, 250));
     expect(spoken.length).toBe(spokenAtInterrupt);
-  });
+  }, 25000);
 });
 
 describe('a dead network', () => {

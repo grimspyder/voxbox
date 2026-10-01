@@ -31,6 +31,12 @@ export const LIMITS = {
     keyChars: 512,
   },
   providerTimeoutMs: 60_000,
+  report: {
+    /** One response is capped well below the LLM limits: a report is not a transcript. */
+    maxResponseChars: 4000,
+    bodyBytes: 16 * 1024,
+    maxNoteChars: 500,
+  },
 } as const;
 
 /** Open upload audio formats only. Anything else is rejected before parsing. */
