@@ -11,9 +11,11 @@ reviewer, a lawyer or a future maintainer can see why each word is the word.
 | Launcher label (on-device) | **Voxbox** | — | `strings.xml` `app_name`. Kept short because Android launchers truncate; the store title and the launcher label are allowed to differ. |
 | Package name | **com.grimspyder.voxbox** | — | Renamed from `com.grimspyder.kittassistant` *before* registration, because the package appears in the public store URL. Permanent once registered. |
 | In-app persona name | **Vox** | — | The assistant calls itself Vox, not the app name, which reads better out loud. |
-| Category | Entertainment (primary), Tools (secondary) | — | It is a conversational entertainment app, not a utility. |
-| Contact email | *owner to supply* | — | Required by Play. |
-| Privacy policy URL | *owner to supply* | — | Required by Play; must match `docs/PRIVACY_POLICY.md`. |
+| Category | Entertainment (primary), Tools (secondary) | — | It is a conversational entertainment app, not a utility. Set in **Play Console → Store settings**: App or game = App, Category = **Entertainment**. |
+| Contact email | **johnsoler.se@gmail.com** | — | Set in Store settings → Store listing contact details. No phone or website is published. |
+| Privacy policy URL | **https://grimspyder.github.io/voxbox-privacy/** | — | Set in App content → Privacy policy and verified serving 200 over HTTPS. It is a copy of `docs/PRIVACY_POLICY.md` and must change with it. |
+| Play app id | **4972020187650807612** | — | Created 2026-10-01 under the SE Performance developer account (id 5002689969315422966). |
+| Internal testing join URL | **https://play.google.com/apps/internaltest/4701564974103473342** | — | Copied from the console's Testers tab. The package form `https://play.google.com/apps/testing/com.grimspyder.voxbox` also resolves. |
 
 ## Why this name, and why not the obvious ones
 
@@ -111,11 +113,11 @@ any television series or film.
 
 | Asset | Status | Notes |
 |---|---|---|
-| App icon 512×512 | Generated | `docs/store/play-icon-512.png`, produced from `assets/branding/voxbox-icon.svg` by `npm run icons`. Original vector art: the three-bar modulator on black. |
-| Feature graphic 1024×500 | To do | Must also be original; must not use franchise styling or the show's logotype. |
-| Phone screenshots (min 2, up to 8) | To do | Dashboard, active conversation with the modulator lit, the setup wizard, the system-check screen. Capture from the real build on a device, not a mock-up. |
-| AI-generated asset declaration | To do | If any asset is AI-generated, complete Play's current AI asset declaration at submission time. |
-| Content rating | To do | Answer from the app's actual possible output; it is a generative conversational app. |
+| App icon 512×512 | Published in Play | `docs/store/play-icon-512.png`, produced from `assets/branding/voxbox-icon.svg` by `npm run icons`. Original vector art: the three-bar modulator on black. Uploaded as 1/1 in the default store listing. |
+| Feature graphic 1024×500 | Published in Play | `docs/store/feature-graphic-1024x500.png` from `scripts/generate-feature-graphic.mjs`: the same three-bar geometry on black, no lettering, so Play's cropping on some surfaces cannot cut it. Uploaded as 1/1. |
+| Phone screenshots (min 2, up to 8) | Published in Play (2 of 8) | `docs/store/screenshots/01-welcome.png`, `02-dashboard.png` (1080×2400), rendered from the real build in Chromium by `scripts/generate-screenshots.mjs` — not mock-ups. The dashboard shot uses TEST LEDS, which drives the same render path real audio does and is deterministic, so no microphone is needed. |
+| AI-generated asset declaration | Answered: **Don't label assets** | No asset is AI-generated: the icon and feature graphic are deterministic vector renders from committed scripts, and the screenshots are renders of the app's own UI. |
+| Content rating | **Completed** — IARC questionnaire submitted 2026-10-01 | Category answered as *All Other App Types*. Because the app features generated AI content, Online Content = Yes, so the questionnaire records AI text that can *refer to* (not depict) violence and controlled substances, and can contain minor profanities within provider safeguards. Re-run the questionnaire if the app's possible output changes. |
 
 ## Voice and likeness
 
