@@ -19,9 +19,12 @@ that were still open at that audit are marked with the audit date so nothing is 
 | B-10 | P2 | Privacy text claimed audio is never recorded | Settings → PRIVACY | Copy matching real behaviour | The Whisper path captures a temporary recording and uploads it, so the claim was false | **FIXED (2026-09-30)** — PRIVACY now distinguishes temporary processing from persistent storage; ledger PRIVACY-01 |
 | B-11 | P2 | "Save conversation history" did nothing | Enable the option, reload | Transcript restored | `saveHistory` was read by no code path | **FIXED (2026-09-30)** — transcript is now stored on-device (local app storage) and restorable, with CLEAR CONVERSATION HISTORY; ledger PRIVACY-02 |
 | B-12 | P3 | TODO.md listed fullscreen and wake lock as open though both were implemented | Read TODO.md | Accurate status | Stale entries | **FIXED (2026-09-30)** — TODO.md re-audited |
+| B-13 | P1 | INTERRUPT did not silence the device voice | Choose the device voice, start a reply, press INTERRUPT | Speech stops immediately | Only the cloud-audio path was stopped: `speechSynthesis.cancel()` was never called, so the device voice kept talking over the user. A cancelled utterance also never fires `onend`, which left the TTS pump awaiting indefinitely | **FIXED (2026-09-30)** — `TTSClient.stop()` cancels synthesis *and* resolves the pending utterance; the engine calls it on interrupt, on stop, and at the start of each turn. `tests/conversation.test.ts` asserts the voice is actually cancelled rather than merely flagged, so this cannot regress silently |
+| B-14 | P2 | Any microphone problem other than a permission denial parked the machine in ERROR | Use the app where the microphone is missing, blocked, or the API is absent | Problem reported, conversation still fully usable by text | B-03 fixed this for permission denials only. A missing device, a blocked device, or an environment without `mediaDevices` still produced SYSTEM FAULT and a status display stuck away from the conversation | **FIXED (2026-09-30)** — microphone-failure classification broadened to cover every "speech input unavailable" case; a test asserts a complete text turn finishes with no ERROR state |
 
 ## Release gate
 
-No P0 defects. B-04 is environment/tooling. B-05 is mitigated. B-06, B-07, B-08 and B-09 are
-open and owned by named ledger requirements. B-06 and B-08 both need a real device, which arrives
-with the Android build.
+No P0 defects. B-04 is environment/tooling. B-05 is mitigated. B-13 and B-14 were both found
+by the new conversation tests rather than by inspection, and both are fixed with regression
+coverage. B-06, B-07, B-08 and B-09 are open and owned by named ledger requirements. B-06 and
+B-08 both need a real device, which arrives with the Android build.

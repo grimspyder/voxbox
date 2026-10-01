@@ -26,6 +26,16 @@ export interface ConversationHandlers {
   onMicrophoneReady?: () => void;
 }
 
+/**
+ * Conditions where speech input is unavailable but the app remains fully usable
+ * by text. These must never park the machine in ERROR.
+ */
+export function isMicrophoneProblem(message: string): boolean {
+  return /microphone (permission (was )?denied|permission is blocked|unavailable|could not be opened|found|is blocked)|no microphone|does not support microphone capture/i.test(
+    message,
+  );
+}
+
 export class ConversationEngine {
   machine: MachineSnapshot = initialState();
   history: Turn[] = [];
@@ -63,8 +73,12 @@ export class ConversationEngine {
   }
 
   private err(message: string): void {
-    // Mic-permission problems are reported but leave the engine usable (text input still works).
-    if (/microphone permission denied/i.test(message)) {
+    // A microphone problem is reported but must not put the machine into ERROR:
+    // the user can still type, and the status display should keep reflecting the
+    // conversation rather than reading SYSTEM FAULT. B-03 fixed this for
+    // permission denial only; the same dead end remained for a missing device, a
+    // blocked device, and an environment with no mediaDevices API at all.
+    if (isMicrophoneProblem(message)) {
       this.handlers.onError?.(message);
       if (this.machine.state === 'LISTENING') this.dispatch({ type: 'STOP_LISTENING' });
       return;
@@ -176,6 +190,7 @@ export class ConversationEngine {
     this.suppressRecognitionRestart = true;
     this.browserRec.stop();
     this.pipeline.stop(); // in case anything is playing
+    this.tts.stop(); // ...and silence any device voice still speaking
     this.speakQueue = [];
     this.ttsBusy = false;
     this.llmDone = false;
@@ -305,6 +320,7 @@ export class ConversationEngine {
   interrupt(): void {
     this.suppressRecognitionRestart = true;
     this.abort?.abort();
+    this.tts.stop(); // silence the device voice too, not only the cloud audio
     this.pipeline.stop();
     this.browserRec.stop();
     this.speakQueue = [];
@@ -336,6 +352,7 @@ export class ConversationEngine {
 
   stop(): void {
     this.abort?.abort();
+    this.tts.stop();
     this.pipeline.stop();
     this.browserRec.stop();
     this.mic.stop();
