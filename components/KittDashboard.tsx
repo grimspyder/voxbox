@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import VoiceModulator from './VoiceModulator';
 import { ConversationEngine } from '@/lib/conversation/engine';
 import { KITTSettings, DEFAULT_SETTINGS } from '@/lib/config/settings';
@@ -15,6 +15,7 @@ import { MachineSnapshot } from '@/lib/conversation/stateMachine';
 import { computeBarLevels, BarLevels, DEFAULT_TUNING, ModulatorTuning } from '@/lib/audio/modulator';
 import SettingsPanel from './SettingsPanel';
 import SetupWizard from './SetupWizard';
+import ReportResponse from './ReportResponse';
 import { listMics } from '@/lib/stt/mic';
 
 type Status = 'OFFLINE' | 'LISTENING' | 'THINKING' | 'SPEAKING' | 'ERROR';
@@ -39,6 +40,8 @@ export default function KittDashboard() {
   const [machine, setMachine] = useState<MachineSnapshot>({ state: 'DISCONNECTED', history: [] });
   const [showSettings, setShowSettings] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
+  // The response the user is reporting, or null when the sheet is closed (§53).
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
   const [settingsReady, setSettingsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
@@ -46,6 +49,13 @@ export default function KittDashboard() {
   const [latency, setLatency] = useState<string>('');
   const [inputLevel, setInputLevel] = useState(0);
   const [micList, setMicList] = useState<MediaDeviceInfo[]>([]);
+
+  // The most recent reply, which is what "report last response" refers to. Derived
+  // after the transcript state it reads, or it would be in its temporal dead zone.
+  const lastResponse = useMemo(
+    () => [...transcript].reverse().find((t) => t.role === 'assistant')?.text ?? '',
+    [transcript],
+  );
 
   const engineRef = useRef<ConversationEngine | null>(null);
   const settingsLoadedRef = useRef(false);
@@ -385,6 +395,15 @@ export default function KittDashboard() {
         {machine.state !== 'DISCONNECTED' && (
           <button onClick={newConversation} className="kitt-btn" aria-label="Start a new conversation and clear context">✳ NEW CONVERSATION</button>
         )}
+        {lastResponse && (
+          <button
+            onClick={() => setReportTarget(lastResponse)}
+            className="kitt-btn"
+            aria-label="Report the last response from Vox"
+          >
+            ⚑ REPORT
+          </button>
+        )}
         {machine.state === 'SPEAKING' && (
           <button onClick={interrupt} className="kitt-btn" aria-label="Interrupt Vox">✖ INTERRUPT</button>
         )}
@@ -431,10 +450,28 @@ export default function KittDashboard() {
           {transcript.map((t, i) => (
             <div key={i} style={{ color: t.role === 'user' ? '#8ab4f8' : '#ff6b6b' }}>
               <b>{t.role === 'user' ? 'You' : 'Vox'}:</b> {t.text}
+              {t.role === 'assistant' && (
+                <button
+                  className="kitt-btn"
+                  style={{ marginLeft: 8, padding: '8px 10px', minHeight: 44, fontSize: 11 }}
+                  aria-label="Report this response"
+                  onClick={() => setReportTarget(t.text)}
+                >
+                  ⚑ REPORT
+                </button>
+              )}
             </div>
           ))}
           {interim && <div style={{ color: '#666' }}><b>Vox:</b> {interim}</div>}
         </div>
+      )}
+
+      {reportTarget && (
+        <ReportResponse
+          response={reportTarget}
+          provider={settings.llm.provider}
+          onClose={() => setReportTarget(null)}
+        />
       )}
 
       {(showSetup || (settingsReady && !settings.setup.complete)) && (
