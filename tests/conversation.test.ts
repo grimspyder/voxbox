@@ -241,11 +241,12 @@ describe('interruption', () => {
   it('stops speaking when interrupted, and returns to listening', async () => {
     const h = await startEngine();
     void h.engine.sendText('who are you?');
-    // Wait on the state history, not the live state: SPEAKING is entered as the
-    // first sentence starts and may already have ended again by the time the
-    // assertion runs, so polling for it directly is a race — and one that CI's
-    // slower runner lost.
-    await until(() => h.states.some((s) => s.state === 'SPEAKING'));
+    // Wait until something is audibly in flight, not merely until the machine
+    // reached SPEAKING: the first utterance may not have been handed to the
+    // synthesiser yet, and interrupting before that proves nothing about whether
+    // speech is silenced. This is the assertion that failed on CI, and it was
+    // right to fail.
+    await until(() => spoken.length > 0);
 
     h.engine.interrupt();
 
