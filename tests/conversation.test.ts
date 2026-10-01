@@ -241,7 +241,11 @@ describe('interruption', () => {
   it('stops speaking when interrupted, and returns to listening', async () => {
     const h = await startEngine();
     void h.engine.sendText('who are you?');
-    await until(() => h.engine.machine.state === 'SPEAKING');
+    // Wait on the state history, not the live state: SPEAKING is entered as the
+    // first sentence starts and may already have ended again by the time the
+    // assertion runs, so polling for it directly is a race — and one that CI's
+    // slower runner lost.
+    await until(() => h.states.some((s) => s.state === 'SPEAKING'));
 
     h.engine.interrupt();
 
@@ -252,7 +256,7 @@ describe('interruption', () => {
     const spokenAtInterrupt = spoken.length;
     await new Promise((r) => setTimeout(r, 250));
     expect(spoken.length).toBe(spokenAtInterrupt);
-  });
+  }, 25000);
 });
 
 describe('a dead network', () => {
