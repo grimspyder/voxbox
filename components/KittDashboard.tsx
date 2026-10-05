@@ -44,6 +44,7 @@ export default function KittDashboard() {
   const [reportTarget, setReportTarget] = useState<string | null>(null);
   const [settingsReady, setSettingsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
   const [interim, setInterim] = useState('');
   const [latency, setLatency] = useState<string>('');
@@ -149,6 +150,7 @@ export default function KittDashboard() {
         }
       },
       onError: (msg) => setError(msg),
+      onNotice: (msg) => setNotice(msg),
       onMicrophoneReady: () => { void refreshMics(); },
       });
   }, [settings, handleTranscript, refreshMics]);
@@ -433,6 +435,13 @@ export default function KittDashboard() {
           {error}{' '}
           <button className="kitt-btn" onClick={() => { setError(null); void startConversation(); }}>RETRY</button>
           <button className="kitt-btn" onClick={() => setError(null)}>DISMISS</button>
+        </div>
+      )}
+
+      {notice && (
+        <div role="status" style={{ color: '#e0b64a', fontSize: 12, margin: 8, maxWidth: '90vw', textAlign: 'center' }}>
+          {notice}{' '}
+          <button className="kitt-btn" onClick={() => setNotice(null)}>OK</button>
         </div>
       )}
 
