@@ -15,6 +15,7 @@ import type { MachineSnapshot } from '@/lib/conversation/stateMachine';
 let spoken: string[] = [];
 let cancels = 0;
 let inFlight = 0;
+let getUserMediaCalls = 0;
 
 class FakeUtterance {
   text: string;
@@ -47,6 +48,19 @@ class FakeGain {
   disconnect() {}
 }
 
+class FakeAudioNode {
+  connect() {
+    return this;
+  }
+  disconnect() {}
+}
+
+class FakeFilter extends FakeAudioNode {
+  type = '';
+  frequency = { value: 0 };
+  Q = { value: 0 };
+}
+
 class FakeAudioContext {
   state = 'running';
   sampleRate = 44100;
@@ -57,6 +71,15 @@ class FakeAudioContext {
   }
   createGain() {
     return new FakeGain();
+  }
+  createBiquadFilter() {
+    return new FakeFilter();
+  }
+  createMediaStreamSource() {
+    return new FakeAudioNode();
+  }
+  createMediaStreamDestination() {
+    return { stream: { getTracks: () => [{ stop() {} }] } };
   }
   resume() {
     return Promise.resolve();
@@ -85,6 +108,7 @@ function installStubs() {
   spoken = [];
   cancels = 0;
   inFlight = 0;
+  getUserMediaCalls = 0;
 
   const w = window as unknown as Record<string, unknown>;
   w.AudioContext = FakeAudioContext;
@@ -99,7 +123,10 @@ function installStubs() {
   const fakeStream = { getTracks: () => [{ stop() {} }], getAudioTracks: () => [{ label: 'fake mic', stop() {} }] };
   Object.defineProperty(window.navigator, 'mediaDevices', {
     value: {
-      getUserMedia: async () => fakeStream,
+      getUserMedia: async () => {
+        getUserMediaCalls += 1;
+        return fakeStream;
+      },
       enumerateDevices: async () => [],
     },
     configurable: true,
@@ -141,23 +168,32 @@ interface Harness {
   states: MachineSnapshot[];
   transcript: { role: 'user' | 'assistant'; text: string }[];
   errors: string[];
+  echoes: string[];
+  notices: string[];
   started: Promise<void>;
 }
 
+const liveEngines: ConversationEngine[] = [];
+
 async function startEngine(settings = testSettings()): Promise<Harness> {
   const engine = new ConversationEngine(settings);
+  liveEngines.push(engine);
   const states: MachineSnapshot[] = [];
   const transcript: { role: 'user' | 'assistant'; text: string }[] = [];
   const errors: string[] = [];
+  const echoes: string[] = [];
+  const notices: string[] = [];
   const started = engine.start({
     onState: (m) => states.push(m),
     onTranscript: (role, text, interim) => {
       if (!interim) transcript.push({ role, text });
     },
     onError: (message) => errors.push(message),
+    onEchoDropped: (text) => echoes.push(text),
+    onNotice: (message) => notices.push(message),
   });
   await started;
-  return { engine, states, transcript, errors, started };
+  return { engine, states, transcript, errors, echoes, notices, started };
 }
 
 /** Poll until the predicate holds, so tests do not depend on exact timing. */
@@ -184,6 +220,16 @@ async function awaitTurnComplete(h: Harness, timeoutMs = 15000): Promise<void> {
 }
 
 afterEach(() => {
+  // Every engine must be shut down: one left running keeps a scheduled listen
+  // timer alive, which then fires during a later test and makes that test's
+  // microphone observations a lie.
+  for (const engine of liveEngines.splice(0)) {
+    try {
+      engine.stop();
+    } catch {
+      /* already stopped */
+    }
+  }
   vi.unstubAllGlobals();
 });
 
@@ -307,4 +353,83 @@ describe('a device with no usable microphone', () => {
     await until(() => h.engine.machine.state === 'IDLE', 8000);
     expect(h.engine.machine.state).toBe('IDLE');
   });
+});
+
+describe('Vox must not answer its own voice', () => {
+  beforeEach(installStubs);
+
+  it('drops a voice transcript that is what Vox just said', async () => {
+    const h = await startEngine();
+    await h.engine.sendText('hello');
+    await until(() => spoken.join(' ').includes('All systems are operational'), 8000);
+    await awaitTurnComplete(h);
+
+    const usersBefore = h.transcript.filter((t) => t.role === 'user').length;
+
+    // Exactly the failure the phone reported: the microphone picks up Vox's own
+    // speaker, the recogniser returns Vox's words, and the model then answers
+    // something the user never said.
+    await h.engine.handleUtterance('All systems are operational', 'voice');
+
+    expect(h.echoes.length).toBe(1);
+    expect(h.transcript.filter((t) => t.role === 'user').length).toBe(usersBefore);
+    expect(h.errors).toEqual([]);
+  }, 25000);
+
+  it('still answers a genuinely different voice utterance', async () => {
+    const h = await startEngine();
+    await h.engine.sendText('hello');
+    await until(() => spoken.join(' ').includes('All systems are operational'), 8000);
+    await awaitTurnComplete(h);
+
+    await h.engine.handleUtterance('what is the weather in denver', 'voice');
+    await until(() => h.transcript.filter((t) => t.role === 'user').length === 2, 8000);
+
+    expect(h.echoes).toEqual([]);
+    expect(h.transcript[2]).toEqual({ role: 'user', text: 'what is the weather in denver' });
+  }, 25000);
+
+  it('never second-guesses text the user actually typed', async () => {
+    const h = await startEngine();
+    await h.engine.sendText('hello');
+    await until(() => spoken.join(' ').includes('All systems are operational'), 8000);
+    await awaitTurnComplete(h);
+
+    // Deliberately repeating Vox's own words by typing is a legitimate thing to
+    // do, and typed input carries no microphone risk at all.
+    await h.engine.sendText('All systems are operational');
+    await until(() => h.transcript.filter((t) => t.role === 'user').length === 2, 8000);
+    expect(h.echoes).toEqual([]);
+  }, 25000);
+
+  it('keeps the microphone shut for a moment after Vox stops speaking', async () => {
+    const h = await startEngine();
+    await h.engine.sendText('hello');
+    await awaitTurnComplete(h);
+
+    // The recogniser must not be reopened onto the speaker tail: playback ending
+    // is not the room going quiet. getUserMedia is the observable proxy for
+    // "listening is open again".
+    const atTurnEnd = getUserMediaCalls;
+    await new Promise((r) => setTimeout(r, 300));
+    // 300 ms in, the speaker tail has not cleared — listening must still be shut.
+    expect(getUserMediaCalls).toBe(atTurnEnd);
+
+    await until(() => getUserMediaCalls > atTurnEnd, 4000);
+  }, 25000);
+
+  it('does not arm barge-in when the device cannot confirm echo cancellation', async () => {
+    // Whisper path: the microphone is actually captured, and this fake device
+    // reports nothing for echoCancellation — which must not be read as "yes",
+    // because a barge-in that fires on Vox's own speaker is a self-interrupt.
+    const h = await startEngine(
+      testSettings({ stt: { ...testSettings().stt, provider: 'openai', apiKey: 'test-key-placeholder' } }),
+    );
+    const mic = (h.engine as unknown as { mic: { bargeInArmed: boolean } }).mic;
+
+    void h.engine.sendText('who are you?');
+    await until(() => h.states.some((s) => s.state === 'SPEAKING'), 8000);
+    expect(mic.bargeInArmed).toBe(false);
+    h.engine.stop();
+  }, 25000);
 });
