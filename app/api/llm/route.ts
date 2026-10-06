@@ -86,6 +86,10 @@ export async function POST(req: NextRequest) {
     maxTokens,
     baseUrl: resolvedBaseUrl,
     provider: provider as LLMConfig['provider'],
+    // Live-answer settings are a client concern; the provider adapters ignore them.
+    searchEnabled: false,
+    searchApiKey: '',
+    searchModel: '',
   };
   const chatMessages = messages as ChatMessage[];
   const signal = providerSignal(req.signal, LIMITS.providerTimeoutMs);

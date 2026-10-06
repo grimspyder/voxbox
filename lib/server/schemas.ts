@@ -56,6 +56,16 @@ export const ttsRequestSchema = z
   .strict();
 
 export type LlmRequest = z.infer<typeof llmRequestSchema>;
+export type LiveSearchRequest = z.infer<typeof liveSearchRequestSchema>;
+
+export const liveSearchRequestSchema = z
+  .object({
+    apiKey,
+    model: z.string().trim().max(LIMITS.live.modelChars).optional().default(''),
+    query: z.string().trim().min(1, 'There was nothing to look up.').max(LIMITS.live.maxQueryChars),
+    context: z.string().trim().max(LIMITS.live.maxContextChars).optional().default(''),
+  })
+  .strict();
 export type TtsRequest = z.infer<typeof ttsRequestSchema>;
 
 /** Turn a ZodError into one short consumer-safe sentence. */

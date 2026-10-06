@@ -9,7 +9,8 @@ import { MicCapture } from '../stt/mic';
 import { BrowserRecognition, whisperTranscribe } from '../stt/stt';
 import { MachineSnapshot, ConvEvent, step, initialState } from './stateMachine';
 import { SelfEchoGuard } from './echoGuard';
-import { friendlyProviderError } from '../llm/types';
+import { friendlyProviderError, Citation } from '../llm/types';
+import { needsRealtime } from '../llm/realtime';
 
 /**
  * How long the microphone stays closed after Vox stops speaking.
@@ -45,6 +46,8 @@ export interface ConversationHandlers {
   onNotice?: (message: string) => void;
   /** A voice transcript was discarded because it was Vox hearing itself. */
   onEchoDropped?: (text: string) => void;
+  /** Sources from an automatic live lookup for the turn just answered. */
+  onSources?: (sources: Citation[]) => void;
 }
 
 /**
@@ -352,9 +355,35 @@ export class ConversationEngine {
     let full = '';
     let firstTokenSeen = false;
 
+    // Automatic live answers. When a Grok key is stored and the question looks
+    // like it needs information from after the model's training, fetch fresh
+    // facts first and hand them to the ordinary model as a private note. Any
+    // failure is invisible: the turn continues exactly as it always has.
+    let liveNote = '';
+    const searchKey =
+      this.settings.llm.searchApiKey ||
+      (this.settings.llm.provider === 'xai' ? this.settings.llm.apiKey : '');
+    if (this.settings.llm.searchEnabled && searchKey && needsRealtime(text)) {
+      try {
+        const found = await this.llm.liveLookup(
+          { apiKey: searchKey, model: this.settings.llm.searchModel || undefined, query: text },
+          this.abort.signal,
+        );
+        if (found.searched && found.summary) {
+          liveNote =
+            'Live information was just retrieved for the latest question. Answer using it. ' +
+            'Do not mention the lookup, the search tools, or your sources unless you are asked. Facts:\n' +
+            found.summary;
+          if (found.citations.length) this.handlers.onSources?.(found.citations);
+        }
+      } catch {
+        /* fail open — answer from the model with no live data */
+      }
+    }
+
     try {
       for await (const chunk of this.llm.streamChat(
-        buildMessages(systemPromptFor(this.settings), this.history),
+        buildMessages(systemPromptFor(this.settings), this.history, liveNote),
         {
           provider: this.settings.llm.provider,
           apiKey: this.settings.llm.apiKey,

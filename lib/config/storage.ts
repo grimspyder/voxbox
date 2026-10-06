@@ -12,7 +12,7 @@ import { loadSecrets, saveSecrets, deleteAllSecrets, purgeLegacyWebSecrets, Stor
 const SETTINGS_KEY = 'kitt.settings.v1';
 
 export type StoredSettings = Omit<KITTSettings, 'llm' | 'tts' | 'stt'> & {
-    llm: Omit<KITTSettings['llm'], 'apiKey'>;
+    llm: Omit<KITTSettings['llm'], 'apiKey' | 'searchApiKey'>;
     tts: Omit<KITTSettings['tts'], 'apiKey'>;
     stt: Omit<KITTSettings['stt'], 'apiKey'>;
   };
@@ -21,7 +21,7 @@ function stripSecrets(s: KITTSettings): StoredSettings {
   const { llm, tts, stt, ...rest } = s;
   return {
     ...rest,
-    llm: { ...llm, apiKey: '' },
+    llm: { ...llm, apiKey: '', searchApiKey: '' },
     tts: { ...tts, apiKey: '' },
     stt: { ...stt, apiKey: '' },
   } as unknown as StoredSettings;
@@ -34,6 +34,7 @@ function collectSecrets(s: KITTSettings): StoredSecrets {
     if (s.llm.apiKey) secrets.llm = s.llm.apiKey;
     if (s.tts.apiKey) secrets.tts = s.tts.apiKey;
     if (s.stt.apiKey) secrets.stt = s.stt.apiKey;
+    if (s.llm.searchApiKey) secrets.llmSearch = s.llm.searchApiKey;
   }
   return secrets;
 }
@@ -94,8 +95,9 @@ export async function loadSettings(): Promise<KITTSettings> {
     if (secrets.llm) s.llm = { ...s.llm, apiKey: secrets.llm };
     if (secrets.tts) s.tts = { ...s.tts, apiKey: secrets.tts };
     if (secrets.stt) s.stt = { ...s.stt, apiKey: secrets.stt };
+    if (secrets.llmSearch) s.llm = { ...s.llm, searchApiKey: secrets.llmSearch };
     // A key came back, so any previously stored notice is stale.
-    if (secrets.llm || secrets.tts || secrets.stt) s = { ...s, secretsNeedReentry: false };
+    if (secrets.llm || secrets.tts || secrets.stt || secrets.llmSearch) s = { ...s, secretsNeedReentry: false };
   } catch {
     /* secrets unavailable — session-only */
   }

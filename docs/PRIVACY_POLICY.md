@@ -1,6 +1,6 @@
 # Voxbox Retro AI — Privacy Policy
 
-**Last updated: 2026-10-01**
+**Last updated: 2026-10-06**
 
 This policy describes what the Voxbox Retro AI app ("Voxbox", "the app") does with your information. It
 is written to match what the app actually does; where a feature behaves differently on Android and in
@@ -18,6 +18,8 @@ Contact: **[owner to supply an email address before publishing]**
   temporary recording sent to OpenAI. It is processed to produce text and is not stored by us.
 - Your words go to the AI service **you** chose, and Vox's replies go to the voice service **you**
   chose. Their own privacy policies govern what they do with it.
+- If you save a Grok (xAI) key, some questions about current events are answered from a live web and X
+  search made by xAI. This is off unless you add that key. See "Live answers" below.
 - Your API keys are stored on your device. On Android they are protected by the device keystore. They
   pass through our server only to make the request you asked for. **We do not store them on the server
   and we do not write them to logs.**
@@ -47,12 +49,24 @@ below.
 
 ### Conversation text
 
-What you say or type is sent to the AI service you configured — one of OpenAI, OpenRouter, Anthropic
-or Google Gemini — in order to generate a reply. The reply text is sent to the voice service you
+What you say or type is sent to the AI service you configured — one of OpenAI, OpenRouter, Anthropic,
+xAI Grok or Google Gemini — in order to generate a reply. The reply text is sent to the voice service you
 configured — OpenAI, ElevenLabs, or your device's built-in voice — in order to be spoken. These
 services are third parties acting on your instructions, under their own privacy policies.
 
 Voxbox does not send your conversation anywhere else, and does not keep a copy on our servers.
+
+### Live answers (optional, off unless you add a Grok key)
+
+Vox can answer questions about current events — news, prices, scores, weather — from a live web and X
+search instead of from the AI model's training. This is **off unless you save a Grok (xAI) API key** in
+Settings. With that key present, when a question looks like it needs current information, the question
+text is sent to xAI, which searches the web and X and returns a short summary and its sources. The
+summary is folded into Vox's answer; the sources are shown in the transcript.
+
+The summary and sources are used for that reply only. They are not stored on our server and are not
+written to logs. xAI's own privacy policy governs the search. If you never add a Grok key, nothing about
+this feature runs and the app behaves exactly as before.
 
 ### Your API keys
 
@@ -167,3 +181,6 @@ This section exists so the policy cannot quietly drift away from the code.
 | The web store is weaker, and the app says so | Settings → SYSTEM SETUP reports the active backend |
 | No analytics or crash reporting | nothing of the kind is installed; `package.json` dependencies are the evidence |
 | History is never uploaded | `lib/config/history.ts` writes to local storage only; no route accepts it |
+| Live answers only run when the user saved a Grok key | `lib/conversation/engine.ts` looks up only when `llm.searchApiKey`/provider is xAI and the question passes `lib/llm/realtime.ts` |
+| A live-lookup failure cannot break a turn | the engine's live block is wrapped in try/catch and continues with the ordinary model; asserted in `tests/realtime.test.ts` |
+| The Grok search key is stored encrypted on the device, never in settings | `lib/config/storage.ts` strips `searchApiKey`; it travels via `secureStore` (`llmSearch`) |

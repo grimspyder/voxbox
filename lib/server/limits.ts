@@ -31,6 +31,16 @@ export const LIMITS = {
     keyChars: 512,
   },
   providerTimeoutMs: 60_000,
+  /** Automatic live-lookup leg (Grok web/X search). One short query per turn. */
+  live: {
+    maxQueryChars: 512,
+    maxContextChars: 2000,
+    maxSummaryChars: 1200,
+    modelChars: 128,
+    keyChars: 512,
+    bodyBytes: 16 * 1024,
+    timeoutMs: 30_000,
+  },
   report: {
     /** One response is capped well below the LLM limits: a report is not a transcript. */
     maxResponseChars: 4000,

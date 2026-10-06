@@ -8,6 +8,15 @@ export interface LLMConfig {
   apiKey: string;
   model: string;
   baseUrl?: string;
+  /**
+   * Automatic live answers. `searchApiKey` is a Grok (xAI) key kept in the same
+   * secure store as the others; when present, a turn whose question needs
+   * current information is answered from a live web/X lookup. Empty means the
+   * feature is simply off and Vox behaves exactly as it always has.
+   */
+  searchEnabled: boolean;
+  searchApiKey: string;
+  searchModel: string;
   temperature: number;
   maxTokens: number;
 }
@@ -95,6 +104,9 @@ export const DEFAULT_SETTINGS: KITTSettings = {
     baseUrl: '',
     temperature: 0.7,
     maxTokens: 300,
+    searchEnabled: true,
+    searchApiKey: '',
+    searchModel: '',
   },
   tts: {
     provider: 'demo',

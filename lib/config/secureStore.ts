@@ -21,10 +21,10 @@
 import { isNativeShell } from '../setup/capabilities';
 import { SecureStore } from '../native/secureStorePlugin';
 
-export type SecretName = 'llm' | 'tts' | 'stt';
+export type SecretName = 'llm' | 'tts' | 'stt' | 'llmSearch';
 export type StoredSecrets = Partial<Record<SecretName, string>>;
 
-const SECRET_NAMES: SecretName[] = ['llm', 'tts', 'stt'];
+const SECRET_NAMES: SecretName[] = ['llm', 'tts', 'stt', 'llmSearch'];
 
 /** Legacy browser-storage keys. Kept identical so existing users still load. */
 const ENC_BLOB_KEY = 'kitt.secrets.v1';
