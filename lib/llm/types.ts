@@ -6,6 +6,21 @@ export interface ChatMessage {
   content: string;
 }
 
+/** A source returned by a live web/X lookup. */
+export interface Citation {
+  title: string;
+  url: string;
+}
+
+/** Outcome of one automatic live-lookup leg. */
+export interface LiveLookupResult {
+  /** True when the model actually searched and returned fresh facts. */
+  searched: boolean;
+  /** Short factual summary to fold into the spoken answer ('' when nothing). */
+  summary: string;
+  citations: Citation[];
+}
+
 export interface LLMProvider {
   id: string;
   // Streams text deltas as they become available. Throws KITTError on failure.

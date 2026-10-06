@@ -17,6 +17,7 @@ import SettingsPanel from './SettingsPanel';
 import SetupWizard from './SetupWizard';
 import ReportResponse from './ReportResponse';
 import { listMics } from '@/lib/stt/mic';
+import type { Citation } from '@/lib/llm/types';
 
 type Status = 'OFFLINE' | 'LISTENING' | 'THINKING' | 'SPEAKING' | 'ERROR';
 const STATUS_LABEL: Record<Status, string> = {
@@ -47,6 +48,8 @@ export default function KittDashboard() {
   const [notice, setNotice] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
   const [interim, setInterim] = useState('');
+  /** Sources from the automatic live lookup for the most recent answer. */
+  const [sources, setSources] = useState<Citation[]>([]);
   const [latency, setLatency] = useState<string>('');
   const [inputLevel, setInputLevel] = useState(0);
   const [micList, setMicList] = useState<MediaDeviceInfo[]>([]);
@@ -152,6 +155,7 @@ export default function KittDashboard() {
       onError: (msg) => setError(msg),
       onNotice: (msg) => setNotice(msg),
       onMicrophoneReady: () => { void refreshMics(); },
+      onSources: (s) => setSources(s),
       });
   }, [settings, handleTranscript, refreshMics]);
 
@@ -169,6 +173,7 @@ export default function KittDashboard() {
   /** Clear the conversation context Vox is using (keeps the session running). */
   const newConversation = useCallback(() => {
     engineRef.current?.newConversation();
+    setSources([]);
     setInterim('');
     setTranscript([]);
     clearHistory();
@@ -472,6 +477,19 @@ export default function KittDashboard() {
             </div>
           ))}
           {interim && <div style={{ color: '#666' }}><b>Vox:</b> {interim}</div>}
+          {sources.length > 0 && (
+            <div style={{ marginTop: 6, fontSize: 11, color: '#777' }}>
+              <b>Sources:</b>{' '}
+              {sources.map((s, i) => (
+                <span key={s.url}>
+                  {i > 0 && ' · '}
+                  <a href={s.url} target="_blank" rel="noreferrer" style={{ color: '#8ab4f8' }}>
+                    {s.title}
+                  </a>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
