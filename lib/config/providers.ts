@@ -49,6 +49,15 @@ export const PROVIDER_CARDS: ProviderCard[] = [
     reusableForSpeech: false,
   },
   {
+    id: 'xai',
+    name: 'xAI Grok',
+    blurb: 'Grok models from xAI. The same key also powers live web and X answers.',
+    preferredModels: ['grok-4-fast', 'grok-4', 'grok-3-mini', 'grok-3'],
+    keyUrl: 'https://console.x.ai',
+    keyHint: 'Starts with “xai-”. Created on the API Keys page of your xAI console.',
+    reusableForSpeech: false,
+  },
+  {
     id: 'anthropic',
     name: 'Anthropic',
     blurb: 'Claude models. Strong at careful, conversational answers.',

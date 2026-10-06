@@ -51,7 +51,7 @@ export const ALLOWED_AUDIO_MIME_TYPES = [
 ] as const;
 
 /** Providers the server is allowed to call for chat completions. */
-export const LLM_PROVIDERS = ['openai', 'anthropic', 'gemini', 'openrouter', 'openai-compatible'] as const;
+export const LLM_PROVIDERS = ['openai', 'anthropic', 'gemini', 'openrouter', 'xai', 'openai-compatible'] as const;
 
 /** Providers the server is allowed to call for speech synthesis. */
 export const TTS_PROVIDERS = ['elevenlabs', 'openai'] as const;
@@ -62,5 +62,6 @@ export const PROVIDER_HOSTS = {
   anthropic: 'api.anthropic.com',
   gemini: 'generativelanguage.googleapis.com',
   openrouter: 'openrouter.ai',
+  xai: 'api.x.ai',
   elevenlabs: 'api.elevenlabs.io',
 } as const;

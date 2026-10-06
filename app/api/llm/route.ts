@@ -20,6 +20,7 @@ import { CUSTOM_ENDPOINTS_ENABLED, checkCustomEndpoint } from '@/lib/server/endp
 export const runtime = 'nodejs';
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
+const XAI_BASE = 'https://api.x.ai/v1';
 
 interface Impl {
   streamChat(messages: ChatMessage[], cfg: LLMConfig, signal?: AbortSignal): AsyncGenerator<string>;
@@ -31,6 +32,7 @@ function pick(provider: string): Impl | null {
     case 'openai':
     case 'openai-compatible':
     case 'openrouter':
+    case 'xai':
       return openaiProvider;
     case 'anthropic':
       return anthropicProvider;
@@ -62,6 +64,8 @@ export async function POST(req: NextRequest) {
   let resolvedBaseUrl: string | undefined;
   if (provider === 'openrouter') {
     resolvedBaseUrl = OPENROUTER_BASE;
+  } else if (provider === 'xai') {
+    resolvedBaseUrl = XAI_BASE;
   } else if (provider === 'openai-compatible') {
     if (!CUSTOM_ENDPOINTS_ENABLED) {
       return jsonError(

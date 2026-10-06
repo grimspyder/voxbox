@@ -1,7 +1,7 @@
 // Core domain types and constants
 import { VOXBOX_PERSONA_PROMPT, DEFAULT_USER_ADDRESS } from './persona';
 
-export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'openai-compatible' | 'openrouter' | 'demo';
+export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'openai-compatible' | 'openrouter' | 'xai' | 'demo';
 
 export interface LLMConfig {
   provider: ProviderId;

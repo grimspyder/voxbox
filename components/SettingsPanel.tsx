@@ -284,6 +284,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
               <option value="gemini">Google Gemini</option>
               <option value="openai-compatible">OpenAI-compatible endpoint</option>
               <option value="openrouter">OpenRouter</option>
+              <option value="xai">xAI Grok</option>
             </select>
             {s.llm.provider === 'openai-compatible' && (
               <>

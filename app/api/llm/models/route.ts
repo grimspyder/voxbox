@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
 
 const bodySchema = z
   .object({
-    provider: z.enum(['openai', 'openrouter', 'anthropic', 'gemini']),
+    provider: z.enum(['openai', 'openrouter', 'anthropic', 'gemini', 'xai']),
     apiKey: z.string().min(8).max(LIMITS.llm.keyChars),
   })
   .strict();
@@ -23,12 +23,15 @@ interface ModelEntry {
 }
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
+const XAI_BASE = 'https://api.x.ai/v1';
 
 async function fetchModels(provider: string, apiKey: string, signal: AbortSignal): Promise<ModelEntry[]> {
   switch (provider) {
     case 'openai':
-    case 'openrouter': {
-      const base = provider === 'openrouter' ? OPENROUTER_BASE : 'https://api.openai.com/v1';
+    case 'openrouter':
+    case 'xai': {
+      const base =
+        provider === 'openrouter' ? OPENROUTER_BASE : provider === 'xai' ? XAI_BASE : 'https://api.openai.com/v1';
       const res = await fetch(`${base}/models`, {
         headers: { authorization: `Bearer ${apiKey}` },
         signal,
