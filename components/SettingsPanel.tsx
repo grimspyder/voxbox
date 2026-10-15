@@ -284,6 +284,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
               <option value="gemini">Google Gemini</option>
               <option value="openai-compatible">OpenAI-compatible endpoint</option>
               <option value="openrouter">OpenRouter</option>
+              <option value="xai">xAI Grok</option>
             </select>
             {s.llm.provider === 'openai-compatible' && (
               <>
@@ -302,6 +303,26 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
                 <input type="password" style={input} value={s.llm.apiKey} onChange={(e) => upd({ llm: { ...s.llm, apiKey: e.target.value } })} placeholder={s.llm.apiKey ? maskKey(s.llm.apiKey) : 'paste key…'} />
               </>
             )}
+            <label style={label}>
+              <input
+                type="checkbox"
+                checked={s.llm.searchEnabled}
+                onChange={(e) => upd({ llm: { ...s.llm, searchEnabled: e.target.checked } })}
+              />{' '}
+              Live answers for current events
+            </label>
+            <label style={label}>Grok key for live web &amp; X lookups (xAI)</label>
+            <input
+              type="password"
+              style={input}
+              value={s.llm.searchApiKey}
+              onChange={(e) => upd({ llm: { ...s.llm, searchApiKey: e.target.value } })}
+              placeholder={s.llm.searchApiKey ? maskKey(s.llm.searchApiKey) : 'xai-…'}
+            />
+            <p style={{ fontSize: 11, color: '#666' }}>
+              When a Grok key is set, questions about current events (news, prices, scores, weather) are answered from a
+              live web and X search. Leave it blank and Vox behaves exactly as before.
+            </p>
             <label style={label}>Temperature ({s.llm.temperature.toFixed(2)})</label>
             <input type="range" min={0} max={1.5} step={0.05} value={s.llm.temperature} onChange={(e) => upd({ llm: { ...s.llm, temperature: Number(e.target.value) } })} style={{ width: '100%' }} />
             <label style={label}>Max response tokens</label>
@@ -374,6 +395,11 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             <input type="checkbox" checked={s.mic.handsFree} onChange={(e) => upd({ mic: { ...s.mic, handsFree: e.target.checked } })} />
             <label style={label}>Automatic interruption (barge-in)</label>
             <input type="checkbox" checked={s.mic.autoInterrupt} onChange={(e) => upd({ mic: { ...s.mic, autoInterrupt: e.target.checked } })} />
+            <p style={{ fontSize: 11, color: '#999', margin: '2px 0 10px' }}>
+              Only used when the device confirms echo cancellation. Without it the microphone
+              hears Vox&apos;s own speaker and Vox would interrupt itself — the INTERRUPT button
+              and headphones always work.
+            </p>
             <label style={label}>Echo cancellation</label>
             <input type="checkbox" checked={s.mic.echoCancellation} onChange={(e) => upd({ mic: { ...s.mic, echoCancellation: e.target.checked } })} />
             <label style={label}>Noise suppression</label>

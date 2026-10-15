@@ -82,7 +82,7 @@ describe('system check', () => {
 
 describe('provider metadata', () => {
   it('offers exactly the providers the server can reach', () => {
-    expect(PROVIDER_CARDS.map((p) => p.id)).toEqual(['openai', 'openrouter', 'anthropic', 'gemini']);
+    expect(PROVIDER_CARDS.map((p) => p.id)).toEqual(['openai', 'openrouter', 'xai', 'anthropic', 'gemini']);
   });
 
   it('gives every provider a key page and a default model', () => {

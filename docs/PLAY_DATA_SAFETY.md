@@ -42,7 +42,7 @@ size cap, MIME allowlist and timeout).
 | Field | Answer |
 |---|---|
 | Collected? | **Yes**, when an AI service is configured — the text is sent to the provider the user chose in order to generate a reply. |
-| Shared? | **Yes, with the user's chosen provider** (OpenAI, OpenRouter, Anthropic or Google Gemini), and the reply text with the chosen voice provider (OpenAI or ElevenLabs). |
+| Shared? | **Yes, with the user's chosen provider** (OpenAI, OpenRouter, Anthropic, xAI Grok or Google Gemini), and the reply text with the chosen voice provider (OpenAI or ElevenLabs). |
 | Purpose | App functionality: generating and speaking a reply. |
 | Optional? | **Yes** — demo mode works with no AI service at all. |
 | Stored? | **Not by us.** The transcript is held in memory for the session, or written to the device's local app storage only if the user turns on *Save conversation history*. |
@@ -52,6 +52,20 @@ size cap, MIME allowlist and timeout).
 
 Code: `lib/conversation/engine.ts`, `lib/config/history.ts` (local only), `app/api/llm/route.ts`,
 `app/api/tts/route.ts`.
+
+### Live search queries (only when the user saves a Grok key)
+
+| Field | Answer |
+|---|---|
+| Collected? | **Only if the user saves a Grok (xAI) key.** Then a question that looks like it needs current information is sent to xAI for a live web/X search. Off by default; without the key nothing is sent. |
+| Shared? | **Yes, with xAI** — and only when that key is present and the question needs live information. |
+| Purpose | App functionality: answering questions about current events. |
+| Optional? | **Yes.** Leave the Grok key blank and this never runs. |
+| Stored? | **No.** The summary and sources are used for that reply only; not stored by us. |
+| Encrypted in transit? | **Yes** — HTTPS. |
+
+Code: `lib/llm/realtime.ts` (trigger), `lib/conversation/engine.ts` (call, fail-open),
+`app/api/llm/live/route.ts` (proxy, rate limited), `lib/llm/providers/xaiLive.ts` (xAI call).
 
 ### App info and performance — diagnostics
 

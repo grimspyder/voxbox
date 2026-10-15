@@ -73,6 +73,9 @@ export const RATE_LIMITS = {
   tts: { limit: 90, windowMs: 60_000 },
   stt: { limit: 12, windowMs: 60_000 },
   models: { limit: 20, windowMs: 60_000 },
+  // The automatic live-lookup leg. Deliberately tight: it is one extra call per
+  // turn and each search is billed per source, so a runaway loop is expensive.
+  live: { limit: 15, windowMs: 60_000 },
   // Reports are rare and worth reading; the cap exists to stop the route being
   // used as a spam cannon, not to ration genuine reports.
   report: { limit: 5, windowMs: 3_600_000 },
