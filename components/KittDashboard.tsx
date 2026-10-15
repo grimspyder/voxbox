@@ -18,6 +18,10 @@ import SetupWizard from './SetupWizard';
 import ReportResponse from './ReportResponse';
 import { listMics } from '@/lib/stt/mic';
 import type { Citation } from '@/lib/llm/types';
+import {
+  isFullscreenActive,
+  toggleFullscreen as togglePlatformFullscreen,
+} from '@/lib/native/fullscreen';
 
 type Status = 'OFFLINE' | 'LISTENING' | 'THINKING' | 'SPEAKING' | 'ERROR';
 const STATUS_LABEL: Record<Status, string> = {
@@ -53,6 +57,9 @@ export default function KittDashboard() {
   const [latency, setLatency] = useState<string>('');
   const [inputLevel, setInputLevel] = useState(0);
   const [micList, setMicList] = useState<MediaDeviceInfo[]>([]);
+  // Whether the display is filling the screen, so the same control can offer an
+  // obvious way back out (production requirements MOBILE-07).
+  const [fullscreenActive, setFullscreenActive] = useState(false);
 
   // The most recent reply, which is what "report last response" refers to. Derived
   // after the transcript state it reads, or it would be in its temporal dead zone.
@@ -244,11 +251,31 @@ export default function KittDashboard() {
     ledTestRef.current.raf = requestAnimationFrame(tick);
   }, []);
 
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      void document.exitFullscreen().catch(() => undefined);
-    } else {
-      void document.documentElement.requestFullscreen().catch(() => undefined);
+  // Fullscreen is not available everywhere, and the previous version of this
+  // handler called the browser API and threw the rejection away — which is
+  // exactly why pressing FULLSCREEN in the Android app did nothing at all
+  // instead of reporting anything. The work now lives in
+  // lib/native/fullscreen.ts, which chooses the native shell plugin or the
+  // browser API and reports failure rather than swallowing it.
+  const refreshFullscreen = useCallback(async () => {
+    setFullscreenActive(await isFullscreenActive());
+  }, []);
+
+  useEffect(() => {
+    void refreshFullscreen();
+    if (typeof document === 'undefined') return;
+    // The browser path can leave fullscreen without the app asking (Escape), so
+    // follow the event rather than trusting the last click.
+    const onChange = () => void refreshFullscreen();
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, [refreshFullscreen]);
+
+  const toggleFullscreen = useCallback(async () => {
+    const result = await togglePlatformFullscreen();
+    setFullscreenActive(result.active);
+    if (!result.ok) {
+      setNotice('This device does not allow fullscreen in the app. The display still fills the window.');
     }
   }, []);
 
@@ -415,7 +442,9 @@ export default function KittDashboard() {
           <button onClick={interrupt} className="kitt-btn" aria-label="Interrupt Vox">✖ INTERRUPT</button>
         )}
         <button onClick={toggleLedTest} className="kitt-btn" aria-label="Test the LED modulator">◉ TEST LEDS</button>
-        <button onClick={toggleFullscreen} className="kitt-btn" aria-label="Toggle full screen">⛶ FULLSCREEN</button>
+        <button onClick={() => void toggleFullscreen()} className="kitt-btn" aria-label="Toggle full screen">
+          ⛶ {fullscreenActive ? 'EXIT FULLSCREEN' : 'FULLSCREEN'}
+        </button>
         <button onClick={() => setShowSettings(true)} className="kitt-btn" aria-label="Open settings">⚙ SETTINGS</button>
       </div>
 
