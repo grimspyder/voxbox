@@ -1,6 +1,10 @@
 # Traffic Alerts — speed monitoring and verbal warnings
 
-Research and implementation plan. Status: proposal, no code written yet.
+Research and implementation plan. Status: **P1 started** — the alert decision layer
+(`lib/traffic/alertPolicy.ts`) is implemented and covered by 12 behavioural tests; native
+location service, limit provider and speech are still to come. Blocked on a TomTom key for
+P0 data validation.
+
 Author: Felix. Target: Voxbox Android (`com.grimspyder.voxbox`), targetSdk 36.
 
 ## 1. What the feature actually is
