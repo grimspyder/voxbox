@@ -1,9 +1,15 @@
 # Traffic Alerts — speed monitoring and verbal warnings
 
-Research and implementation plan. Status: **P1 started** — the alert decision layer
-(`lib/traffic/alertPolicy.ts`) is implemented and covered by 12 behavioural tests; native
-location service, limit provider and speech are still to come. Blocked on a TomTom key for
-P0 data validation.
+Research and implementation plan. Status: **P1 in progress** — alert decision layer
+(`lib/traffic/alertPolicy.ts`), jurisdiction rules (`jurisdictions.ts`) and state tracker
+(`jurisdictionTracker.ts`) are implemented and covered by 25 behavioural tests. TomTom key is
+live and returning limits + `countrySubdivision`. Native location service, limit provider and
+speech are still to come.
+
+**Jurisdiction detection is free:** TomTom's Snap to Roads returns `address.countrySubdivision`
+(e.g. `"NC"`) in the *same* response as the speed limit, so no extra geocoding call or cost is
+needed to know which state's law applies. A new state must be seen twice in a row before the app
+adopts it, so a border flicker cannot swap laws mid-drive.
 
 Author: Felix. Target: Voxbox Android (`com.grimspyder.voxbox`), targetSdk 36.
 

@@ -38,6 +38,10 @@ export interface TrafficPolicyConfig {
   announceLimitChange: boolean;
   /** Optional per-jurisdiction charge threshold, mph over. null disables. */
   chargeThresholdMph: number | null;
+  /** How to read the over-threshold: 'gte' = "20 or more", 'gt' = "more than 15". */
+  chargeThresholdMode: 'gte' | 'gt';
+  /** Absolute speed that triggers a charge regardless of the limit (e.g. >80). */
+  chargeAbsoluteMph: number | null;
 }
 
 export const DEFAULT_TRAFFIC_POLICY: TrafficPolicyConfig = {
@@ -51,6 +55,8 @@ export const DEFAULT_TRAFFIC_POLICY: TrafficPolicyConfig = {
   minSpeedMph: 15,
   announceLimitChange: true,
   chargeThresholdMph: null,
+  chargeThresholdMode: 'gte',
+  chargeAbsoluteMph: null,
 };
 
 export interface TrafficSample {
@@ -74,6 +80,8 @@ export interface TrafficAlert {
   speedMph: number;
   limitMph: number;
   t: number;
+  /** For charge alerts: whether the over-limit rule or the absolute-speed rule fired. */
+  chargeReason?: 'over' | 'absolute';
 }
 
 interface BandState {
@@ -109,6 +117,18 @@ export class SpeedAlertPolicy {
 
   get config(): TrafficPolicyConfig {
     return { ...this.cfg };
+  }
+
+  /**
+   * Apply a config change at runtime — used when the vehicle crosses a state
+   * line and the charge rules change. Band state is preserved (the driver did
+   * not change speed); only the charge latch is cleared so the new
+   * jurisdiction's rule can fire.
+   */
+  setConfig(partial: Partial<TrafficPolicyConfig>): void {
+    this.cfg = { ...this.cfg, ...partial };
+    this.state.chargeAnnounced = false;
+    this.state.chargeBelowSince = null;
   }
 
   /** Full reset, e.g. when drive mode is stopped. */
@@ -244,20 +264,37 @@ export class SpeedAlertPolicy {
     }
 
     // ---- charge threshold (never rate-limited) -------------------------------
+    // Two independent triggers, because states differ: a delta over the limit
+    // ("20 mph or more over") and an absolute speed ("over 80 mph") that applies
+    // even where the posted limit is high. Either fires once per crossing.
     const chargeAt = this.cfg.chargeThresholdMph;
-    if (chargeAt !== null) {
-      if (over >= chargeAt) {
-        this.state.chargeBelowSince = null;
-        if (!this.state.chargeAnnounced) {
-          this.state.chargeAnnounced = true;
-          this.recordAnnouncement(t);
-          alerts.push({ kind: 'charge', bandMph: chargeAt, speedMph, limitMph, t });
-        }
-      } else if (over < chargeAt - this.cfg.releaseMph) {
-        if (this.state.chargeBelowSince === null) this.state.chargeBelowSince = t;
-        if (t - this.state.chargeBelowSince >= this.cfg.releaseSeconds) {
-          this.state.chargeAnnounced = false;
-        }
+    const chargeAbs = this.cfg.chargeAbsoluteMph;
+    const overHit =
+      chargeAt !== null &&
+      (this.cfg.chargeThresholdMode === 'gt' ? over > chargeAt : over >= chargeAt);
+    const absHit = chargeAbs !== null && speedMph > chargeAbs;
+
+    if (overHit || absHit) {
+      this.state.chargeBelowSince = null;
+      if (!this.state.chargeAnnounced) {
+        this.state.chargeAnnounced = true;
+        this.recordAnnouncement(t);
+        alerts.push({
+          kind: 'charge',
+          bandMph: overHit ? Math.round(over) : null,
+          speedMph,
+          limitMph,
+          t,
+          chargeReason: overHit ? 'over' : 'absolute',
+        });
+      }
+    } else if (
+      (chargeAt === null || over < chargeAt - this.cfg.releaseMph) &&
+      (chargeAbs === null || speedMph < chargeAbs - this.cfg.releaseMph)
+    ) {
+      if (this.state.chargeBelowSince === null) this.state.chargeBelowSince = t;
+      if (t - this.state.chargeBelowSince >= this.cfg.releaseSeconds) {
+        this.state.chargeAnnounced = false;
       }
     }
 
@@ -345,9 +382,14 @@ export function formatTrafficAlert(
       return `You are doing ${words} miles over the speed limit.`;
     }
     case 'charge': {
-      const band = alert.bandMph ?? 0;
       const where = opts.stateName ? ` in ${opts.stateName}` : '';
-      const what = opts.chargeLabel ?? 'a possible reckless driving charge';
+      const what = opts.chargeLabel ?? 'a possible traffic charge';
+      if (alert.chargeReason === 'absolute') {
+        const mph = numberToWords(Math.round(alert.speedMph));
+        const capitalised = mph.charAt(0).toUpperCase() + mph.slice(1);
+        return `${capitalised} miles an hour${where} is ${what}.`;
+      }
+      const band = alert.bandMph ?? 0;
       const words = numberToWords(band);
       const capitalised = words.charAt(0).toUpperCase() + words.slice(1);
       return `${capitalised} miles over${where} is ${what}.`;
