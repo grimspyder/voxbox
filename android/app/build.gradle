@@ -53,6 +53,14 @@ android {
                 signingConfig signingConfigs.release
             }
         }
+        debug {
+            // Side-by-side installs: the debug build is signed with the Android
+            // debug key, which Android refuses to install over a Play build of
+            // the same package. A suffix gives it its own identity so testers
+            // keep the store version and this preview at the same time.
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
     }
 }
 
