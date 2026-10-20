@@ -16,6 +16,7 @@ import { computeBarLevels, BarLevels, DEFAULT_TUNING, ModulatorTuning } from '@/
 import SettingsPanel from './SettingsPanel';
 import SetupWizard from './SetupWizard';
 import ReportResponse from './ReportResponse';
+import DrivePanel from './DrivePanel';
 import { listMics } from '@/lib/stt/mic';
 import type { Citation } from '@/lib/llm/types';
 import {
@@ -419,6 +420,8 @@ export default function KittDashboard() {
         )}
         {latency && <span style={{ color: '#666', fontSize: 11 }}>first-audio: {latency}</span>}
       </div>
+
+      <DrivePanel />
 
       <div className="kitt-buttons" style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
         {machine.state === 'DISCONNECTED' ? (

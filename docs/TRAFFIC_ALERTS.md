@@ -184,7 +184,30 @@ tests, settings schema in `lib/config/settings.ts`.
    of pairing UX and another permission. Recommend deferring to Phase 5.
 4. **Alert aggressiveness?** Default: +1 soft, then +5/+10/+15/+20, max 3 announcements/minute.
 
-## 10. Risks
+## 12. Shadow build — how to test on the phone
+
+Build: `npm run android:debug` with `NEXT_PUBLIC_VOXBOX_API_BASE=https://voxbox-eight.vercel.app`.
+APK lands at `android/app/build/outputs/apk/debug/app-debug.apk`; a copy goes to the Desktop.
+
+Procedure:
+
+1. Sideload the APK (debug build, not a Play release). Location and notification
+   permissions must be granted; without fine location the start call rejects.
+2. On the dashboard, press **START DRIVE**. The Android notification "Voxbox drive
+   monitoring" must appear — that is the foreground service, and its absence means the
+   service did not start.
+3. Drive normally. Nothing is spoken. SPEED / LIMIT / ROAD update once per second.
+4. After the drive, press **COPY LOG** and send the text back. Each line is
+   `mm:ss  SPEED mph in a LIMIT zone (road, state) -> "what it would have said"`.
+5. Compare the log against the signs actually passed. Every line is either a correct
+   alert at the right place, a wrong limit, or a missed alert — that ratio is the P0
+   answer, and it decides whether the voice layer is worth building.
+
+Known limits of the shadow build: debug-signed, so it installs alongside nothing and
+cannot be published; the API base is baked at build time; and the log is in-memory only
+(leaving the app loses it), which is why the copy button exists.
+
+## 13. Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
