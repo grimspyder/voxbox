@@ -31,6 +31,13 @@ export const LIMITS = {
     keyChars: 512,
   },
   providerTimeoutMs: 60_000,
+  /** Speed-limit lookups. Points are capped because the client only ever needs
+   *  the current fix plus the previous one. */
+  speedlimit: {
+    maxPoints: 8,
+    bodyBytes: 4 * 1024,
+    timeoutMs: 12_000,
+  },
   /** Automatic live-lookup leg (Grok web/X search). One short query per turn. */
   live: {
     maxQueryChars: 512,

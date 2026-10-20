@@ -15,6 +15,10 @@ public class MainActivity extends BridgeActivity {
         // Without this the dashboard's fullscreen call rejects and the button is
         // dead again (BUGS.md B-17).
         registerPlugin(FullscreenPlugin.class);
+        // Speed sampling for traffic alerts. App-local, so it must be registered
+        // explicitly like the other two; without this the JS bridge call rejects
+        // and drive mode cannot start.
+        registerPlugin(SpeedMonitorPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

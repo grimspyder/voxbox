@@ -68,6 +68,20 @@ export const liveSearchRequestSchema = z
   .strict();
 export type TtsRequest = z.infer<typeof ttsRequestSchema>;
 
+/**
+ * Speed-limit lookup. The client sends the last two fixes (TomTom requires at
+ * least two points); nothing about the user or the vehicle is included.
+ */
+export const speedLimitRequestSchema = z
+  .object({
+    points: z
+      .array(z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]))
+      .min(2, 'At least two position points are required.')
+      .max(LIMITS.speedlimit.maxPoints),
+  })
+  .strict();
+export type SpeedLimitRequest = z.infer<typeof speedLimitRequestSchema>;
+
 /** Turn a ZodError into one short consumer-safe sentence. */
 export function firstIssueMessage(error: z.ZodError): string {
   const issue = error.issues[0];
