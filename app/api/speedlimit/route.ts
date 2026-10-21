@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LIMITS } from '@/lib/server/limits';
 import { speedLimitRequestSchema } from '@/lib/server/schemas';
+import { segmentIdentity } from '@/lib/traffic/segment';
 import {
   readJsonBody,
   jsonError,
@@ -179,9 +180,10 @@ export async function POST(req: NextRequest) {
   const limit = Math.round(speedLimit.value);
 
   // A stable identity for the policy's "new road" reset. TomTom does not expose
-  // a segment id, so road + limit + state is the practical equivalent: any of
-  // those changing means a different limit context.
-  const segmentId = `${state ?? '??'}|${road ?? 'unknown'}|${limit}`;
+  // a segment id, so road + limit + state is the practical equivalent — except
+  // when the snap returns no road name, where the key falls back to position
+  // rather than treating every unnamed road as one segment.
+  const segmentId = segmentIdentity(state, road, limit, points[points.length - 1]);
 
   const payload: SpeedLimitBody = {
     limit,

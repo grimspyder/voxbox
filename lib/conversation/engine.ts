@@ -5,6 +5,7 @@ import { KITTSettings, systemPromptFor } from '../config/settings';
 import { LLMClient, Turn, buildMessages } from '../llm/client';
 import { TTSClient } from '../tts/client';
 import { AudioPipeline } from '../audio/pipeline';
+import { registerSpeechOwner } from '../audio/speechBus';
 import { MicCapture } from '../stt/mic';
 import { BrowserRecognition, whisperTranscribe } from '../stt/stt';
 import { MachineSnapshot, ConvEvent, step, initialState } from './stateMachine';
@@ -90,11 +91,17 @@ export class ConversationEngine {
   /** Whether the microphone actually has echo cancellation, as reported by the device. */
   echoCancellationActive: boolean | null = null;
   private warnedAboutEcho = false;
+  /** Removes this engine's speech owner from the global bus. */
+  private unregisterSpeechOwner: (() => void) | null = null;
 
   constructor(settings: KITTSettings) {
     this.settings = settings;
     this.pipeline = new AudioPipeline();
     this.tts = new TTSClient(this.pipeline);
+    // A traffic warning must be able to cut this voice off mid-sentence; see
+    // lib/audio/speechBus.ts. Registered here because this is the single TTS
+    // owner for conversation speech.
+    this.unregisterSpeechOwner = registerSpeechOwner(() => this.tts.stop());
     this.pipeline.onEnded = () => this.onPlaybackDrained();
   }
 
@@ -548,6 +555,8 @@ export class ConversationEngine {
   stop(): void {
     this.abort?.abort();
     this.tts.stop();
+    this.unregisterSpeechOwner?.();
+    this.unregisterSpeechOwner = null;
     this.pipeline.stop();
     this.browserRec.stop();
     this.mic.stop();

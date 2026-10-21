@@ -9,6 +9,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DriveSession, formatShadowLog, type ShadowEvent } from '@/lib/traffic/driveSession';
 import { SpeedLimitProvider } from '@/lib/traffic/speedLimitProvider';
+import { TrafficSpeaker } from '@/lib/traffic/trafficSpeaker';
+import { interruptAllSpeech } from '@/lib/audio/speechBus';
+import { AudioPipeline } from '@/lib/audio/pipeline';
+import { TTSClient } from '@/lib/tts/client';
+import { loadSettings } from '@/lib/config/storage';
+import type { TTSConfig } from '@/lib/config/settings';
 import { speedMonitor, speedMonitorAvailable, type SpeedFix } from '@/lib/native/speedMonitor';
 
 interface Latest {
@@ -27,13 +33,27 @@ export default function DrivePanel() {
   const [latest, setLatest] = useState<Latest>(EMPTY);
   const [events, setEvents] = useState<ShadowEvent[]>([]);
   const [copied, setCopied] = useState(false);
+  // Speech is on by default: this build exists to be heard. The checkbox is the
+  // escape hatch for a quiet test drive.
+  const [voiceOn, setVoiceOn] = useState(true);
+  const voiceOnRef = useRef(true);
 
   const sessionRef = useRef<DriveSession | null>(null);
   const providerRef = useRef<SpeedLimitProvider | null>(null);
   const removeRef = useRef<(() => Promise<void>) | null>(null);
   const startedAtRef = useRef(0);
+  const speakerRef = useRef<TrafficSpeaker | null>(null);
+  const pipelineRef = useRef<AudioPipeline | null>(null);
+
+  useEffect(() => {
+    voiceOnRef.current = voiceOn;
+  }, [voiceOn]);
 
   const stop = useCallback(async () => {
+    speakerRef.current?.dispose();
+    speakerRef.current = null;
+    pipelineRef.current?.close();
+    pipelineRef.current = null;
     sessionRef.current?.stop();
     try {
       await speedMonitor.stop();
@@ -64,9 +84,28 @@ export default function DrivePanel() {
         return;
       }
       const provider = new SpeedLimitProvider();
+
+      // Speech: the warning path interrupts whatever else is talking (the
+      // assistant included) before it speaks. Built from the user's saved TTS
+      // settings so it sounds like the same voice.
+      const settings = await loadSettings();
+      const ttsCfg: TTSConfig = settings.tts;
+      const pipeline = new AudioPipeline();
+      const tts = new TTSClient(pipeline);
+      pipelineRef.current = pipeline;
+      speakerRef.current = new TrafficSpeaker({
+        speak: (text: string) => tts.speak(text, ttsCfg),
+        interrupt: () => interruptAllSpeech(),
+      });
+
       const session = new DriveSession({
         provider,
-        onEvent: (event) => setEvents((prev) => [...prev.slice(-299), event]),
+        onEvent: (event) => {
+          setEvents((prev) => [...prev.slice(-299), event]);
+          if (voiceOnRef.current && event.alert) {
+            speakerRef.current?.announce(event.alert, event.text);
+          }
+        },
       });
       providerRef.current = provider;
       sessionRef.current = session;
@@ -140,7 +179,7 @@ export default function DrivePanel() {
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <span style={{ color: '#ffd400', letterSpacing: '0.12em', fontSize: 12 }}>
-          DRIVE — SHADOW MODE
+          DRIVE — ALERTS {voiceOn ? 'ON' : 'MUTED'}
         </span>
         <button
           className="kitt-btn"
@@ -181,9 +220,31 @@ export default function DrivePanel() {
 
       <div style={{ marginTop: 6, fontSize: 10.5, color: '#777' }}>
         {running
-          ? 'Logging only — Vox will not speak. Drive normally, then send me this log.'
-          : 'Runs the real pipeline with speech switched off. No warnings are spoken in this build.'}
+          ? voiceOn
+            ? 'Alerts are spoken. They interrupt Vox mid-sentence; monitoring keeps logging either way.'
+            : 'Muted — logging only. No warnings are spoken.'
+          : 'Runs the real limit pipeline. Warnings are spoken and cut off any other speech.'}
       </div>
+
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginTop: 8,
+          fontSize: 11,
+          color: '#999',
+          cursor: 'pointer',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={voiceOn}
+          onChange={(e) => setVoiceOn(e.target.checked)}
+          style={{ width: 16, height: 16 }}
+        />
+        SPEAK ALERTS (overrides Vox&apos;s voice)
+      </label>
 
       {error && (
         <div role="alert" style={{ marginTop: 8, color: '#ff9d8f', fontSize: 11.5 }}>
