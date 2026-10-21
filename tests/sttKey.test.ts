@@ -38,6 +38,18 @@ describe('speech key diagnosis', () => {
     expect(d.fingerprint).toMatch(/^sk-proj…abcd, 164 chars$/);
   });
 
+  it('accepts an OpenRouter key when the speech provider is OpenRouter', () => {
+    const d = diagnoseSttKey('sk-or-v1-' + 'd'.repeat(56), 'openrouter');
+    expect(d.problem).toBe('rejected');
+    expect(d.message).toMatch(/OpenRouter rejected this key/);
+  });
+
+  it('rejects an OpenAI key when speech is set to OpenRouter', () => {
+    const d = diagnoseSttKey(key(), 'openrouter');
+    expect(d.problem).toBe('wrong-provider');
+    expect(d.message).toMatch(/not an OpenRouter key/);
+  });
+
   it('never includes the full key in the fingerprint', () => {
     const k = key();
     const d = diagnoseSttKey(k);

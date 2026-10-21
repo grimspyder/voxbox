@@ -385,10 +385,11 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             <select style={input} value={s.stt.provider} onChange={(e) => upd({ stt: { ...s.stt, provider: e.target.value as STTProviderId } })}>
               <option value="browser">Browser recognition (Chrome/Edge)</option>
               <option value="openai">OpenAI Whisper (API key required)</option>
+              <option value="openrouter">OpenRouter Whisper (same key as chat)</option>
             </select>
-            {s.stt.provider === 'openai' && (
+            {s.stt.provider !== 'browser' && (
               <>
-                <label style={label}>Whisper API key</label>
+                <label style={label}>{s.stt.provider === 'openrouter' ? 'OpenRouter API key' : 'Whisper API key'}</label>
                 <input type="password" style={input} value={s.stt.apiKey} onChange={(e) => upd({ stt: { ...s.stt, apiKey: e.target.value } })} placeholder={s.stt.apiKey ? maskKey(s.stt.apiKey) : 'paste key…'} onFocus={(e) => e.currentTarget.select()} />
               </>
             )}

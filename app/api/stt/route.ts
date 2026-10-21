@@ -11,7 +11,29 @@ import { diagnoseSttKey } from '@/lib/server/sttKey';
 
 export const runtime = 'nodejs';
 
-const ALLOWED_MODELS = new Set(['whisper-1', 'gpt-4o-transcribe', 'gpt-4o-mini-transcribe']);
+const ALLOWED_MODELS = new Set([
+  'whisper-1',
+  'gpt-4o-transcribe',
+  'gpt-4o-mini-transcribe',
+  // OpenRouter serves the same models under vendor-prefixed ids.
+  'openai/whisper-1',
+  'openai/whisper-large-v3',
+  'openai/whisper-large-v3-turbo',
+  'openai/gpt-4o-transcribe',
+  'openai/gpt-4o-mini-transcribe',
+]);
+
+const ENDPOINTS = {
+  openai: 'https://api.openai.com/v1/audio/transcriptions',
+  openrouter: 'https://openrouter.ai/api/v1/audio/transcriptions',
+} as const;
+
+type SpeechProvider = keyof typeof ENDPOINTS;
+
+/** OpenRouter ids carry a vendor prefix; the bare OpenAI ids would 400. */
+function defaultModelFor(provider: SpeechProvider): string {
+  return provider === 'openrouter' ? 'openai/whisper-large-v3' : 'whisper-1';
+}
 const LANGUAGE_RE = /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/;
 
 const EXTENSION_MIME: Record<string, string> = {
@@ -80,8 +102,10 @@ export async function POST(req: NextRequest) {
     return fail('That recording is too large to transcribe. Try a shorter message.', 413);
   }
 
-  const requestedModel = String(form.get('model') || 'whisper-1');
-  const model = ALLOWED_MODELS.has(requestedModel) ? requestedModel : 'whisper-1';
+  const requestedProvider = String(form.get('provider') || 'openai');
+  const provider: SpeechProvider = requestedProvider === 'openrouter' ? 'openrouter' : 'openai';
+  const requestedModel = String(form.get('model') || defaultModelFor(provider));
+  const model = ALLOWED_MODELS.has(requestedModel) ? requestedModel : defaultModelFor(provider);
   const requestedLanguage = String(form.get('language') || 'en');
   const language = LANGUAGE_RE.test(requestedLanguage) ? requestedLanguage : 'en';
 
@@ -92,11 +116,16 @@ export async function POST(req: NextRequest) {
 
   const signal = providerSignal(req.signal, LIMITS.stt.timeoutMs);
   try {
-    const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    const res = await fetch(ENDPOINTS[provider], {
       method: 'POST',
       signal,
       redirect: 'error',
-      headers: { authorization: `Bearer ${apiKey}` },
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        ...(provider === 'openrouter'
+          ? { 'HTTP-Referer': 'https://voxbox-eight.vercel.app', 'X-Title': 'Voxbox' }
+          : {}),
+      },
       body: out,
     });
     if (!res.ok) {
@@ -105,7 +134,7 @@ export async function POST(req: NextRequest) {
         // Say which key was sent and what is wrong with it, without ever
         // revealing it. "Check it in Setup" was useless when the key had been
         // pasted twice or belonged to another provider.
-        const diag = diagnoseSttKey(apiKey);
+        const diag = diagnoseSttKey(apiKey, provider);
         return fail(`${diag.message} (sent: ${diag.fingerprint})`, 502);
       }
       if (res.status === 429) {

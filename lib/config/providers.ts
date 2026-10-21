@@ -37,7 +37,7 @@ export const PROVIDER_CARDS: ProviderCard[] = [
   {
     id: 'openrouter',
     name: 'OpenRouter',
-    blurb: 'One key, many different AI models, often with free or cheap options.',
+    blurb: 'One key for many models, and since 2026 the same key also transcribes speech.',
     preferredModels: [
       'openai/gpt-4o-mini',
       'google/gemini-2.0-flash-001',

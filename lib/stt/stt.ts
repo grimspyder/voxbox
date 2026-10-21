@@ -96,8 +96,9 @@ export class BrowserRecognition {
 export async function whisperTranscribe(audio: Blob, cfg: STTConfig): Promise<string> {
   const form = new FormData();
   form.append('audio', audio, 'speech.webm');
-  form.append('model', cfg.model || 'whisper-1');
+  form.append('model', cfg.model || (cfg.provider === 'openrouter' ? 'openai/whisper-large-v3' : 'whisper-1'));
   form.append('language', cfg.language || 'en');
+  form.append('provider', cfg.provider);
   const res = await fetch(apiUrl('/api/stt'), {
     method: 'POST',
     headers: apiHeaders({ 'x-stt-key': cfg.apiKey }),

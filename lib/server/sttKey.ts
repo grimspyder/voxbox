@@ -9,6 +9,8 @@
 //
 // This module classifies that situation from the key alone, without ever
 // logging or returning the secret.
+export type SttProvider = 'openai' | 'openrouter';
+
 export type KeyProblem =
   | 'duplicated'
   | 'wrong-provider'
@@ -25,6 +27,7 @@ export interface KeyDiagnosis {
 
 /** Providers whose keys are routinely mistaken for OpenAI keys. */
 const FOREIGN_PREFIXES: Array<[RegExp, string]> = [
+  [/^sk-proj-/i, 'an OpenAI'],
   [/^sk-or-v1-/i, 'an OpenRouter'],
   [/^gsk_/i, 'a Groq'],
   [/^xai-/i, 'an xAI'],
@@ -41,9 +44,28 @@ export function fingerprintKey(key: string): string {
   return `${key.slice(0, 7)}…${key.slice(-4)}, ${key.length} chars`;
 }
 
-export function diagnoseSttKey(key: string): KeyDiagnosis {
+const PROVIDERS: Record<
+  SttProvider,
+  { name: string; pattern: RegExp; hint: string; page: string }
+> = {
+  openai: {
+    name: 'OpenAI',
+    pattern: /^sk-(proj-)?/,
+    hint: 'start with sk- or sk-proj-',
+    page: 'platform.openai.com/api-keys',
+  },
+  openrouter: {
+    name: 'OpenRouter',
+    pattern: /^sk-or-v1-/,
+    hint: 'start with sk-or-v1-',
+    page: 'openrouter.ai/keys',
+  },
+};
+
+export function diagnoseSttKey(key: string, provider: SttProvider = 'openai'): KeyDiagnosis {
   const trimmed = key.trim();
   const fingerprint = fingerprintKey(trimmed);
+  const target = PROVIDERS[provider] ?? PROVIDERS.openai;
 
   // Two keys pasted into one field: the opening characters reappear later.
   const head = trimmed.slice(0, 12);
@@ -56,22 +78,21 @@ export function diagnoseSttKey(key: string): KeyDiagnosis {
     };
   }
 
-  for (const [pattern, name] of FOREIGN_PREFIXES) {
-    if (pattern.test(trimmed)) {
-      return {
-        problem: 'wrong-provider',
-        fingerprint,
-        message: `That is ${name} key, not an OpenAI key. Speech recognition only accepts OpenAI keys (they start with sk- or sk-proj-).`,
-      };
-    }
-  }
-
-  if (!/^sk-/.test(trimmed)) {
+  const own = provider === 'openrouter' ? /^sk-or-v1-/ : /^sk-proj-/;
+  const foreign = FOREIGN_PREFIXES.find(([pattern]) => pattern.test(trimmed) && !own.test(trimmed));
+  if (foreign) {
     return {
       problem: 'wrong-provider',
       fingerprint,
-      message:
-        'That is not an OpenAI key. Speech recognition needs an OpenAI key, which starts with sk- or sk-proj-.',
+      message: `That is ${foreign[1]} key, not an ${target.name} key. Speech is set to ${target.name}, whose keys ${target.hint}.`,
+    };
+  }
+
+  if (!target.pattern.test(trimmed)) {
+    return {
+      problem: 'wrong-provider',
+      fingerprint,
+      message: `That is not an ${target.name} key. Speech is set to ${target.name}, whose keys ${target.hint}.`,
     };
   }
 
@@ -79,14 +100,13 @@ export function diagnoseSttKey(key: string): KeyDiagnosis {
     return {
       problem: 'looks-truncated',
       fingerprint,
-      message: `That key looks incomplete — ${trimmed.length} characters, which is shorter than any OpenAI key. Copy it again from the OpenAI dashboard.`,
+      message: `That key looks incomplete — ${trimmed.length} characters, which is shorter than any ${target.name} key. Copy it again from ${target.page}.`,
     };
   }
 
   return {
     problem: 'rejected',
     fingerprint,
-    message:
-      'OpenAI rejected this key. It may have been revoked or regenerated since you saved it, so copy the current key from platform.openai.com/api-keys.',
+    message: `${target.name} rejected this key. It may have been revoked or regenerated since you saved it, so copy the current key from ${target.page}.`,
   };
 }

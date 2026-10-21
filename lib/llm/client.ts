@@ -94,11 +94,17 @@ export class LLMClient {
       let out = '';
       for await (const c of this.streamChat(
         [{ role: 'user', content: 'Reply with exactly: ONLINE' }],
-        { ...opts, temperature: 0, maxTokens: 10 },
+        { ...opts, temperature: 0, maxTokens: 256 },
       )) {
         out += c;
       }
-      if (!out.trim()) return { ok: false, message: 'Provider responded with empty output.' };
+      if (!out.trim()) {
+        return {
+          ok: false,
+          message:
+            'The provider accepted the key but returned no text. Reasoning models spend the first tokens thinking, so raise the max-token setting or pick a non-reasoning model.',
+        };
+      }
       return { ok: true, message: `Connection successful (${opts.provider}/${opts.model}).` };
     } catch (e) {
       return { ok: false, message: e instanceof KITTError ? e.message : String(e) };

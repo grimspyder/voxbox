@@ -36,7 +36,7 @@ export interface TTSConfig {
   outputVolume: number; // 0..1
 }
 
-export type STTProviderId = 'browser' | 'openai' | 'demo';
+export type STTProviderId = 'browser' | 'openai' | 'openrouter' | 'demo';
 
 export interface STTConfig {
   provider: STTProviderId;
