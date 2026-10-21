@@ -300,7 +300,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             {s.llm.provider !== 'demo' && (
               <>
                 <label style={label}>API key (stored encrypted on this device only)</label>
-                <input type="password" style={input} value={s.llm.apiKey} onChange={(e) => upd({ llm: { ...s.llm, apiKey: e.target.value } })} placeholder={s.llm.apiKey ? maskKey(s.llm.apiKey) : 'paste key…'} />
+                <input type="password" style={input} value={s.llm.apiKey} onChange={(e) => upd({ llm: { ...s.llm, apiKey: e.target.value } })} placeholder={s.llm.apiKey ? maskKey(s.llm.apiKey) : 'paste key…'} onFocus={(e) => e.currentTarget.select()} />
               </>
             )}
             <label style={label}>
@@ -315,6 +315,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             <input
               type="password"
               style={input}
+              onFocus={(e) => e.currentTarget.select()}
               value={s.llm.searchApiKey}
               onChange={(e) => upd({ llm: { ...s.llm, searchApiKey: e.target.value } })}
               placeholder={s.llm.searchApiKey ? maskKey(s.llm.searchApiKey) : 'xai-…'}
@@ -353,7 +354,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             {(s.tts.provider === 'elevenlabs' || s.tts.provider === 'openai') && (
               <>
                 <label style={label}>API key</label>
-                <input type="password" style={input} value={s.tts.apiKey} onChange={(e) => upd({ tts: { ...s.tts, apiKey: e.target.value } })} placeholder={s.tts.apiKey ? maskKey(s.tts.apiKey) : 'paste key…'} />
+                <input type="password" style={input} value={s.tts.apiKey} onChange={(e) => upd({ tts: { ...s.tts, apiKey: e.target.value } })} placeholder={s.tts.apiKey ? maskKey(s.tts.apiKey) : 'paste key…'} onFocus={(e) => e.currentTarget.select()} />
                 <label style={label}>{s.tts.provider === 'elevenlabs' ? 'Voice ID' : 'Voice (alloy/echo/fable/onyx/nova/shimmer)'}</label>
                 <input style={input} value={s.tts.voiceId} onChange={(e) => upd({ tts: { ...s.tts, voiceId: e.target.value } })} />
                 <label style={label}>Model {s.tts.provider === 'elevenlabs' ? '(eleven_turbo_v2_5 / eleven_multilingual_v2)' : '(tts-1 / tts-1-hd)'}</label>
@@ -388,7 +389,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             {s.stt.provider === 'openai' && (
               <>
                 <label style={label}>Whisper API key</label>
-                <input type="password" style={input} value={s.stt.apiKey} onChange={(e) => upd({ stt: { ...s.stt, apiKey: e.target.value } })} placeholder={s.stt.apiKey ? maskKey(s.stt.apiKey) : 'paste key…'} />
+                <input type="password" style={input} value={s.stt.apiKey} onChange={(e) => upd({ stt: { ...s.stt, apiKey: e.target.value } })} placeholder={s.stt.apiKey ? maskKey(s.stt.apiKey) : 'paste key…'} onFocus={(e) => e.currentTarget.select()} />
               </>
             )}
             <label style={label}>Hands-free conversation (auto end-of-turn)</label>

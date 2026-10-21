@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ALLOWED_AUDIO_MIME_TYPES, LIMITS } from '@/lib/server/limits';
 import { jsonError, enforceRateLimit, providerSignal, contentLengthExceeded, corsHeaders, handlePreflight } from '@/lib/server/http';
 import { consumerProviderError } from '@/lib/server/providerErrors';
+import { diagnoseSttKey } from '@/lib/server/sttKey';
 
 export const runtime = 'nodejs';
 
@@ -101,7 +102,11 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       const raw = await res.text().catch(() => '');
       if (res.status === 401) {
-        return fail('Your speech recognition key was rejected. Check it in Setup → Speech.', 502);
+        // Say which key was sent and what is wrong with it, without ever
+        // revealing it. "Check it in Setup" was useless when the key had been
+        // pasted twice or belonged to another provider.
+        const diag = diagnoseSttKey(apiKey);
+        return fail(`${diag.message} (sent: ${diag.fingerprint})`, 502);
       }
       if (res.status === 429) {
         return fail('Your speech service is rate limiting Vox. Wait a moment and try again.', 502);

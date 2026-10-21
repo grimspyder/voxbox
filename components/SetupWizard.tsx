@@ -355,6 +355,7 @@ export default function SetupWizard({ initial, onFinish }: Props) {
                     type={showKey ? 'text' : 'password'}
                     style={{ ...input, flex: 1 }}
                     value={keyInput}
+                    onFocus={(e) => e.currentTarget.select()}
                     onChange={(e) => setKeyInput(e.target.value)}
                     placeholder="Paste your key here"
                     autoComplete="off"
@@ -491,6 +492,7 @@ export default function SetupWizard({ initial, onFinish }: Props) {
                     type={showVoiceKey ? 'text' : 'password'}
                     style={{ ...input, flex: 1 }}
                     value={voiceKey}
+                    onFocus={(e) => e.currentTarget.select()}
                     onChange={(e) => setVoiceKey(e.target.value)}
                     placeholder="Paste your key here"
                     autoComplete="off"
