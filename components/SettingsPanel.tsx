@@ -11,6 +11,7 @@ import { testMicrophone } from '@/lib/stt/micTest';
 import { buildSystemCheck, summariseCheck } from '@/lib/setup/readiness';
 import { reportCapabilities, Capability } from '@/lib/setup/capabilities';
 import { secretStoreBackend, SecretStoreBackend } from '@/lib/config/secureStore';
+import { chatOpenRouterKey } from '@/lib/stt/speechConfig';
 
 interface Props {
   settings: KITTSettings;
@@ -139,6 +140,9 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
   // Optimistic until the capability probe reports in, so the prerendered HTML
   // and the first client render agree.
   const deviceVoiceOk = caps.length === 0 || (caps.find((c) => c.id === 'speech-synthesis')?.ok ?? true);
+  // The chat leg's OpenRouter key can serve speech too; say which one is in use
+  // rather than letting a stale copy in the speech slot speak for it.
+  const speechChatKey = chatOpenRouterKey(s);
 
   return (
     <div role="dialog" aria-label="Settings" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 50, overflowY: 'auto', padding: '16px' }}>
@@ -391,6 +395,17 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
               <>
                 <label style={label}>{s.stt.provider === 'openrouter' ? 'OpenRouter API key' : 'Whisper API key'}</label>
                 <input type="password" style={input} value={s.stt.apiKey} onChange={(e) => upd({ stt: { ...s.stt, apiKey: e.target.value } })} placeholder={s.stt.apiKey ? maskKey(s.stt.apiKey) : 'paste key…'} onFocus={(e) => e.currentTarget.select()} />
+                {speechChatKey && s.stt.provider === 'openrouter' && (
+                  <p style={{ fontSize: 11, color: '#7bd87b', margin: '4px 0 0' }}>
+                    Speech uses your OpenRouter chat key ({maskKey(speechChatKey)}), so this field can stay empty.
+                  </p>
+                )}
+                {speechChatKey && s.stt.provider === 'openai' && (
+                  <p style={{ fontSize: 11, color: '#ff9a3c', margin: '4px 0 0' }}>
+                    Chat runs on OpenRouter, but speech still uses the OpenAI key above. If that key was revoked or replaced,
+                    choose OpenRouter Whisper — Vox will then use your OpenRouter key for speech too.
+                  </p>
+                )}
               </>
             )}
             <label style={label}>Hands-free conversation (auto end-of-turn)</label>

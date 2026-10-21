@@ -107,7 +107,7 @@ export function diagnoseSttKey(key: string, provider: SttProvider = 'openai'): K
   return {
     problem: 'rejected',
     fingerprint,
-    message: `${target.name} rejected this key. It may have been revoked or regenerated since you saved it, so copy the current key from ${target.page}.`,
+    message: `${target.name} rejected this key. It may have been revoked or regenerated since you saved it, so copy the current key from ${target.page}. This is the key stored for speech recognition — not the chat key.`,
   };
 }
 

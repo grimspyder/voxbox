@@ -8,6 +8,7 @@ import { AudioPipeline } from '../audio/pipeline';
 import { registerSpeechOwner } from '../audio/speechBus';
 import { MicCapture } from '../stt/mic';
 import { BrowserRecognition, whisperTranscribe } from '../stt/stt';
+import { resolveSpeechConfig, speechKeyFallback, ResolvedSpeech } from '../stt/speechConfig';
 import { MachineSnapshot, ConvEvent, step, initialState } from './stateMachine';
 import { SelfEchoGuard } from './echoGuard';
 import { friendlyProviderError, Citation } from '../llm/types';
@@ -313,12 +314,36 @@ export class ConversationEngine {
     this.latency.utteranceEnd = performance.now();
     this.dispatch({ type: 'SUBMIT_UTTERANCE' });
     try {
-      const text = await whisperTranscribe(blob, this.settings.stt);
+      const text = await this.transcribeWithFallback(blob, resolveSpeechConfig(this.settings));
       this.latency.transcriptionDone = performance.now();
       if (text.trim()) await this.handleUtterance(text.trim(), 'voice');
       else void this.listen();
     } catch (e) {
       this.err(friendlyProviderError(e));
+    }
+  }
+
+  /**
+   * Transcribe, and if the stored speech key is rejected, retry once with the
+   * OpenRouter key the chat leg is already using.
+   *
+   * The app used to keep a private copy of the chat key in the speech slot. A user
+   * who moved chat to OpenRouter kept Whisper pointed at the old OpenAI key and was
+   * told that key had been revoked — true, and useless, because a working key was
+   * already on the device. Falling back keeps Vox usable and the notice says why.
+   */
+  private async transcribeWithFallback(blob: Blob, speech: ResolvedSpeech): Promise<string> {
+    try {
+      return await whisperTranscribe(blob, speech);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      const retry = speechKeyFallback(speech, this.settings, message);
+      if (!retry) throw e;
+      const text = await whisperTranscribe(blob, retry);
+      this.handlers.onNotice?.(
+        'Speech recognition switched to your OpenRouter key — the key saved for speech was rejected. Choose OpenRouter Whisper in Settings → SPEECH to make that permanent.',
+      );
+      return text;
     }
   }
 

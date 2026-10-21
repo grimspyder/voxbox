@@ -35,6 +35,9 @@ describe('speech key diagnosis', () => {
     const d = diagnoseSttKey(key());
     expect(d.problem).toBe('rejected');
     expect(d.message).toMatch(/revoked or regenerated/i);
+    // The user who moved chat to OpenRouter read "OpenAI rejected this key" as
+    // "the OpenRouter key I just pasted is wrong". Name the slot.
+    expect(d.message).toMatch(/not the chat key/i);
     expect(d.fingerprint).toMatch(/^sk-proj…abcd, 164 chars$/);
   });
 
