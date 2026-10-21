@@ -28,6 +28,11 @@ const nextConfig = native
       // a blank screen on a phone.
       eslint: { ignoreDuringBuilds: false },
     }
-  : {};
+  : {
+      // The sideload APK lives outside public/ on purpose (a native export copies
+      // public/ into the shell bundle) so it must be traced into this route's
+      // function bundle explicitly.
+      outputFileTracingIncludes: { '/api/download/voxbox-debug': ['./artifacts/**'] },
+    };
 
 export default nextConfig;
