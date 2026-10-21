@@ -1,4 +1,4 @@
-import { diagnoseSttKey } from '@/lib/server/sttKey';
+import { diagnoseSttKey, resolveSpeechProvider } from '@/lib/server/sttKey';
 
 /**
  * OpenAI's 401 used to become "check your key", which is useless when the key
@@ -55,5 +55,19 @@ describe('speech key diagnosis', () => {
     const d = diagnoseSttKey(k);
     expect(d.fingerprint).not.toContain(k);
     expect(d.message).not.toContain(k.slice(10, 30));
+  });
+});
+
+describe('speech provider resolution', () => {
+  it('trusts an sk-or key over a stale OpenAI setting', () => {
+    expect(resolveSpeechProvider('openai', 'sk-or-v1-abc')).toBe('openrouter');
+  });
+
+  it('keeps OpenAI for an OpenAI key', () => {
+    expect(resolveSpeechProvider('openai', 'sk-proj-abc')).toBe('openai');
+  });
+
+  it('keeps an explicit OpenRouter choice', () => {
+    expect(resolveSpeechProvider('openrouter', 'sk-or-v1-abc')).toBe('openrouter');
   });
 });

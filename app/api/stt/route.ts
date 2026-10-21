@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ALLOWED_AUDIO_MIME_TYPES, LIMITS } from '@/lib/server/limits';
 import { jsonError, enforceRateLimit, providerSignal, contentLengthExceeded, corsHeaders, handlePreflight } from '@/lib/server/http';
 import { consumerProviderError } from '@/lib/server/providerErrors';
-import { diagnoseSttKey } from '@/lib/server/sttKey';
+import { diagnoseSttKey, resolveSpeechProvider } from '@/lib/server/sttKey';
 
 export const runtime = 'nodejs';
 
@@ -103,9 +103,15 @@ export async function POST(req: NextRequest) {
   }
 
   const requestedProvider = String(form.get('provider') || 'openai');
-  const provider: SpeechProvider = requestedProvider === 'openrouter' ? 'openrouter' : 'openai';
+  // The key's prefix wins over the dropdown: an sk-or key sent to OpenAI has
+  // never worked, and that mismatch is not the user's to debug.
+  const provider: SpeechProvider = resolveSpeechProvider(requestedProvider, apiKey);
   const requestedModel = String(form.get('model') || defaultModelFor(provider));
-  const model = ALLOWED_MODELS.has(requestedModel) ? requestedModel : defaultModelFor(provider);
+  let model = ALLOWED_MODELS.has(requestedModel) ? requestedModel : defaultModelFor(provider);
+  // OpenRouter rejects bare ids like "whisper-1"; it wants the vendor prefix.
+  if (provider === 'openrouter' && !model.includes('/')) {
+    model = 'openai/whisper-large-v3';
+  }
   const requestedLanguage = String(form.get('language') || 'en');
   const language = LANGUAGE_RE.test(requestedLanguage) ? requestedLanguage : 'en';
 

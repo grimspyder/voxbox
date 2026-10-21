@@ -110,3 +110,16 @@ export function diagnoseSttKey(key: string, provider: SttProvider = 'openai'): K
     message: `${target.name} rejected this key. It may have been revoked or regenerated since you saved it, so copy the current key from ${target.page}.`,
   };
 }
+
+/**
+ * Which speech backend should serve this request.
+ *
+ * The key tells the truth about its owner even when the app's provider setting
+ * lags behind it — people paste an OpenRouter key and leave the dropdown on
+ * OpenAI, and the server used to send that key to api.openai.com and blame the
+ * user for the 401. Trusting the prefix turns that mistake into a working call.
+ */
+export function resolveSpeechProvider(declared: string, key: string): SttProvider {
+  if (/^sk-or-v1-/i.test(key.trim())) return 'openrouter';
+  return declared === 'openrouter' ? 'openrouter' : 'openai';
+}
