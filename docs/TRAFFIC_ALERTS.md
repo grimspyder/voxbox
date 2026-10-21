@@ -1,10 +1,12 @@
 # Traffic Alerts — speed monitoring and verbal warnings
 
-Research and implementation plan. Status: **P1 in progress** — alert decision layer
-(`lib/traffic/alertPolicy.ts`), jurisdiction rules (`jurisdictions.ts`) and state tracker
-(`jurisdictionTracker.ts`) are implemented and covered by 25 behavioural tests. TomTom key is
-live and returning limits + `countrySubdivision`. Native location service, limit provider and
-speech are still to come.
+Research and implementation plan. Status: **P1 shadow-mode build ready; first user drive reviewed** —
+alert decision layer, NC/VA jurisdiction rules, native Fused Location foreground service, TomTom
+proxy/cache, client provider and a no-audio DrivePanel are implemented. TomTom is live server-side.
+A 34m20s user drive produced speed/limit events on NC roads; it proves the on-device pipeline ran,
+but does not measure posted-limit accuracy because the log contains no physical-sign ground truth.
+The review found and fixed same-sample duplicate soft/+5 warnings (2 regression tests). Speech and
+settings/permissions polish remain.
 
 **Jurisdiction detection is free:** TomTom's Snap to Roads returns `address.countrySubdivision`
 (e.g. `"NC"`) in the *same* response as the speed limit, so no extra geocoding call or cost is
@@ -76,6 +78,7 @@ Required state machine, per band, per road segment:
   separate, softer band at +1).
 - **Arm delay:** must hold over the band for ~2.5 s before announcing (kills GPS jitter).
 - **Hysteresis:** re-arm only after dropping ~2 mph *below* the band for ~5 s.
+- **Coalesce same-fix alerts:** if a sudden speed jump qualifies both the soft +1 notice and a higher band on one sample, emit only the higher band; if a charge alert also qualifies, it supersedes both. Never stack duplicate warnings at one timestamp.
 - **Escalation is immediate:** crossing +10 announces even if +5 was announced 3 s ago.
 - **Per-segment reset:** a new speed limit re-arms everything and (optionally) announces the
   new limit once: "Speed limit thirty-five."

@@ -194,15 +194,18 @@ export class SpeedAlertPolicy {
     const over = speedMph - limitMph;
 
     // ---- soft "you are over the limit" notice -------------------------------
+    // Defer emission until after bands/charge have been evaluated. If a sudden
+    // speed jump qualifies both the soft notice and a higher-priority warning
+    // on the same fix, emit only the highest useful message rather than stacking
+    // "Over the limit" and "Five miles over" at one timestamp.
+    let softNoticeDue = false;
     if (this.cfg.initialNoticeMph > 0) {
       if (over >= this.cfg.initialNoticeMph) {
         this.state.legalSince = null;
         if (this.state.overSince === null) this.state.overSince = t;
         const held = t - this.state.overSince;
-        if (!this.state.overNoticed && held >= this.cfg.armSeconds && this.canSpeak(t)) {
-          this.state.overNoticed = true;
-          this.recordAnnouncement(t);
-          alerts.push({ kind: 'over', bandMph: null, speedMph, limitMph, t });
+        if (!this.state.overNoticed && held >= this.cfg.armSeconds) {
+          softNoticeDue = true;
         }
       } else if (over <= 0) {
         // Re-arm only after a clear period back under the limit.
@@ -295,6 +298,19 @@ export class SpeedAlertPolicy {
       if (this.state.chargeBelowSince === null) this.state.chargeBelowSince = t;
       if (t - this.state.chargeBelowSince >= this.cfg.releaseSeconds) {
         this.state.chargeAnnounced = false;
+      }
+    }
+
+    if (softNoticeDue) {
+      const superseded = alerts.some((alert) => alert.kind === 'band' || alert.kind === 'charge');
+      if (superseded) {
+        // A higher-priority warning already covered this speeding episode. Latch
+        // the soft notice without consuming budget or speaking a duplicate.
+        this.state.overNoticed = true;
+      } else if (this.canSpeak(t)) {
+        this.state.overNoticed = true;
+        this.recordAnnouncement(t);
+        alerts.push({ kind: 'over', bandMph: null, speedMph, limitMph, t });
       }
     }
 

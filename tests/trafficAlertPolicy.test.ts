@@ -59,10 +59,30 @@ describe('speed alert policy', () => {
     expect(bands).toEqual([5, 10]);
   });
 
-  it('speaks the soft notice once, then the band', async () => {
+  it('suppresses the soft notice when a higher band qualifies on the same sample', async () => {
     const p = await drive();
     const out = [];
+    // A sudden GPS/position jump lands at +6. Both timers expire together,
+    // but one sample must not produce "over the limit" and then "five over".
     for (let t = 0; t < 10; t += 1) out.push(...p.update(at(t, 41)));
+    expect(out.filter((a) => a.kind === 'over')).toHaveLength(0);
+    expect(out.filter((a) => a.kind === 'band').map((a) => a.bandMph)).toEqual([5]);
+  });
+
+  it('speaks the soft notice first when it qualifies before any higher band', async () => {
+    const p = await drive();
+    const out = [];
+    // Hold at +2 long enough for the soft alert, then accelerate to +5.
+    for (let t = 0; t < 6; t += 1) out.push(...p.update(at(t, 37)));
+    for (let t = 6; t < 14; t += 1) out.push(...p.update(at(t, 40)));
+    expect(out.filter((a) => a.kind === 'over')).toHaveLength(1);
+    expect(out.filter((a) => a.kind === 'band').map((a) => a.bandMph)).toEqual([5]);
+  });
+
+  it('speaks one soft notice when no higher band qualifies', async () => {
+    const p = await drive();
+    const out = [];
+    for (let t = 0; t < 10; t += 1) out.push(...p.update(at(t, 36)));
     expect(out.map((a) => a.kind)).toContain('over');
     expect(out.filter((a) => a.kind === 'over')).toHaveLength(1);
   });
