@@ -1,35 +1,25 @@
 // Sideload delivery for the debug APK.
 //
-// The APK is a build artifact, not web content: keeping it in `artifacts/` and
-// serving it from a route means a native export (`output: 'export'`, which copies
-// public/ into the shell bundle) cannot fold the previous 5 MB build into the new
-// APK. The headers are explicit because Android's downloader and Chrome both
-// refuse a package-relevant file served as octet-stream, and because a phone
-// hitting a cached old build is how a tester ends up reinstalling the bug.
+// This hands the download to the GitHub release asset rather than streaming the
+// package out of a serverless function. A 4.8 MB buffered function response sits
+// right at Vercel's response-body ceiling and cannot serve `Range`, so a phone
+// whose connection drops restarts the whole transfer — the download manager then
+// sits at "in progress" forever. The release asset is CDN-served, advertises
+// `Accept-Ranges: bytes`, and is unaffected by function limits; this route only
+// keeps one stable, short link on the app's own origin.
+//
+// The APK itself stays out of git (artifacts/*.apk) and out of public/ — a native
+// export copies public/ into the shell bundle, which would fold the previous build
+// into the next APK.
 import { NextResponse } from 'next/server';
-import { readFile, stat } from 'node:fs/promises';
-import path from 'node:path';
 
 export const runtime = 'nodejs';
 
-const FILE = path.join(process.cwd(), 'artifacts', 'Voxbox-debug.apk');
+/** Bump both values together when a new debug build is published. */
+const RELEASE_TAG = 'v1.3-debug-5';
+const REPO = 'grimspyder/voxbox';
+const ASSET = 'Voxbox-debug.apk';
 
-export async function GET() {
-  try {
-    const [info, data] = await Promise.all([stat(FILE), readFile(FILE)]);
-    return new NextResponse(new Uint8Array(data), {
-      headers: {
-        'content-type': 'application/vnd.android.package-archive',
-        'content-disposition': 'attachment; filename="Voxbox-debug.apk"',
-        'content-length': String(info.size),
-        'cache-control': 'no-store',
-        'x-content-type-options': 'nosniff',
-      },
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'No debug build is published right now. Build one with npm run android:debug.' },
-      { status: 404 },
-    );
-  }
+export function GET() {
+  return NextResponse.redirect(`https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${ASSET}`, 307);
 }
