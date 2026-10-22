@@ -23,6 +23,12 @@ export interface SpeechPort {
 export interface TrafficSpeakerConfig {
   /** Higher rank wins the pending slot. Default: charge > band > over > limit. */
   rank?: (alert: TrafficAlert) => number;
+  /**
+   * Called when speech fails. Silence is the worst possible outcome for a
+   * speed warning, so the panel needs to be able to say the voice is broken
+   * instead of failing quietly.
+   */
+  onError?: (error: unknown) => void;
 }
 
 const DEFAULT_RANK = (alert: TrafficAlert): number => {
@@ -45,12 +51,14 @@ export class TrafficSpeaker {
   private pending: { text: string; rank: number } | null = null;
   private disposed = false;
   private rank: (alert: TrafficAlert) => number;
+  private onError?: (error: unknown) => void;
 
   constructor(
     private port: SpeechPort,
     config: TrafficSpeakerConfig = {},
   ) {
     this.rank = config.rank ?? DEFAULT_RANK;
+    this.onError = config.onError;
   }
 
   /**
@@ -82,8 +90,14 @@ export class TrafficSpeaker {
   private async run(text: string): Promise<void> {
     try {
       await this.port.speak(text);
-    } catch {
-      // Audio failure must not stop monitoring; the next alert tries again.
+    } catch (error) {
+      // Audio failure must not stop monitoring, but it must not be invisible
+      // either: try the fallback voice and tell the panel what happened.
+      try {
+        this.onError?.(error);
+      } catch {
+        /* reporting a failure cannot itself fail the drive */
+      }
     } finally {
       const next = this.pending;
       this.pending = null;

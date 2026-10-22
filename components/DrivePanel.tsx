@@ -26,6 +26,18 @@ interface Latest {
 
 const EMPTY: Latest = { speedMph: null, limitMph: null, road: null, state: null };
 
+/** A short, non-technical explanation of why the voice went quiet. */
+function describeVoiceError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  if (/401|403|rejected|unauthori[sz]ed|api key/i.test(raw)) {
+    return 'The voice provider rejected your key, so alerts are being read by the device voice instead. Fix the voice key in Settings → Voice.';
+  }
+  if (/speechSynthesis|not available|unavailable/i.test(raw)) {
+    return 'This device has no speech engine for the chosen voice. Alerts are using the fallback tone.';
+  }
+  return `Voice error: ${raw.slice(0, 120) || 'unknown'}. Alerts are using the fallback voice.`;
+}
+
 export default function DrivePanel() {
   const [running, setRunning] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -37,6 +49,7 @@ export default function DrivePanel() {
   // escape hatch for a quiet test drive.
   const [voiceOn, setVoiceOn] = useState(true);
   const voiceOnRef = useRef(true);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const sessionRef = useRef<DriveSession | null>(null);
   const providerRef = useRef<SpeedLimitProvider | null>(null);
@@ -77,6 +90,7 @@ export default function DrivePanel() {
 
   const start = useCallback(async () => {
     setError(null);
+    setVoiceError(null);
     setBusy(true);
     try {
       if (!speedMonitorAvailable()) {
@@ -93,10 +107,37 @@ export default function DrivePanel() {
       const pipeline = new AudioPipeline();
       const tts = new TTSClient(pipeline);
       pipelineRef.current = pipeline;
-      speakerRef.current = new TrafficSpeaker({
-        speak: (text: string) => tts.speak(text, ttsCfg),
-        interrupt: () => interruptAllSpeech(),
-      });
+      // Speak with a fallback chain. A paid provider with a bad key, or a WebView
+      // with no TTS engine, must not turn a speed warning into silence: fall back
+      // to the device voice, then to the built-in demo tone.
+      // The demo voice is a quiet vocoder tone — fine on a desk, useless over
+      // road noise. For driving, the device's own speech engine is the correct
+      // default even when the app is configured for demo.
+      const order: Array<typeof ttsCfg> =
+        ttsCfg.provider === 'demo'
+          ? [{ ...ttsCfg, provider: 'browser' }, ttsCfg]
+          : [ttsCfg, { ...ttsCfg, provider: 'browser' }, { ...ttsCfg, provider: 'demo' }];
+
+      const speakWithFallback = async (text: string): Promise<void> => {
+        let lastError: unknown = null;
+        for (const cfg of order) {
+          try {
+            await tts.speak(text, cfg);
+            return;
+          } catch (e) {
+            lastError = e;
+          }
+        }
+        setVoiceError(describeVoiceError(lastError));
+      };
+
+      speakerRef.current = new TrafficSpeaker(
+        {
+          speak: speakWithFallback,
+          interrupt: () => interruptAllSpeech(),
+        },
+        { onError: (e: unknown) => setVoiceError(describeVoiceError(e)) },
+      );
 
       const session = new DriveSession({
         provider,
@@ -139,6 +180,9 @@ export default function DrivePanel() {
       await speedMonitor.start({ intervalMs: 1000 });
       session.start();
       setRunning(true);
+      // Say something immediately. If the voice is broken, the driver finds out
+      // now rather than at 60 mph with a silent warning.
+      void speakWithFallback('Drive monitoring on.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Drive monitoring could not start.');
       await stop();
@@ -245,6 +289,12 @@ export default function DrivePanel() {
         />
         SPEAK ALERTS (overrides Vox&apos;s voice)
       </label>
+
+      {voiceError && (
+        <div role="status" style={{ marginTop: 8, color: '#ffcf7a', fontSize: 11.5 }}>
+          {voiceError}
+        </div>
+      )}
 
       {error && (
         <div role="alert" style={{ marginTop: 8, color: '#ff9d8f', fontSize: 11.5 }}>

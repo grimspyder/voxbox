@@ -101,3 +101,25 @@ describe('traffic speaker', () => {
     expect(spoken).toEqual(['Speed limit fifty-five.']);
   });
 });
+
+describe('traffic speaker failure reporting', () => {
+  it('reports a speech failure instead of failing silently', async () => {
+    const { TrafficSpeaker } = await import('@/lib/traffic/trafficSpeaker');
+    const errors: unknown[] = [];
+    const speaker = new TrafficSpeaker(
+      {
+        speak: async () => {
+          throw new Error('voice error 401');
+        },
+        interrupt: () => undefined,
+      },
+      { onError: (e) => errors.push(e) },
+    );
+    speaker.announce(
+      { kind: 'band', bandMph: 5, speedMph: 40, limitMph: 35, t: 0 } as never,
+      'Sorry, I cannot speak right now.',
+    );
+    await new Promise((r) => setTimeout(r, 10));
+    expect(errors).toHaveLength(1);
+  });
+});
