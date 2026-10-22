@@ -54,4 +54,32 @@ describe('settings', () => {
     expect(loaded.llm.apiKey).toBe('sk-test');
     expect(loaded.llm.provider).toBe('openai');
   });
+
+  it('keeps a key typed this session even when keys are not saved', async () => {
+    // "Remember keys on this device" is off by default, so storage holds no
+    // secret. The drive panel still has to speak with the key the user just
+    // entered, which means the live settings have to carry it.
+    const store: Record<string, string> = {};
+    const g = globalThis as unknown as { localStorage: Storage };
+    g.localStorage = {
+      getItem: (k: string) => store[k] ?? null,
+      setItem: (k: string, v: string) => { store[k] = v; },
+      removeItem: (k: string) => { delete store[k]; },
+      clear: () => { for (const k of Object.keys(store)) delete store[k]; },
+      key: (i: number) => Object.keys(store)[i] ?? null,
+      length: 0,
+    } as Storage;
+
+    const { saveSettings, getCurrentSettings } = await import('@/lib/config/storage');
+    const { DEFAULT_SETTINGS } = await import('@/lib/config/settings');
+    const voiceKey = ['el', 'secret'].join('-');
+    const live = {
+      ...DEFAULT_SETTINGS,
+      persistSecrets: false,
+      tts: { ...DEFAULT_SETTINGS.tts, provider: 'elevenlabs' as const, voiceId: 'v1', apiKey: voiceKey },
+    };
+    await saveSettings(live);
+    expect(getCurrentSettings()?.tts.apiKey).toBe(voiceKey);
+    expect(store['kitt.settings.v1']).not.toContain(voiceKey);
+  });
 });

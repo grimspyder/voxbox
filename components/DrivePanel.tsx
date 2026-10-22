@@ -12,7 +12,7 @@ import { TrafficSpeaker } from '@/lib/traffic/trafficSpeaker';
 import { interruptAllSpeech } from '@/lib/audio/speechBus';
 import { AudioPipeline } from '@/lib/audio/pipeline';
 import { TTSClient } from '@/lib/tts/client';
-import { loadSettings } from '@/lib/config/storage';
+import { getCurrentSettings, loadSettings } from '@/lib/config/storage';
 import { requireCloudVoice } from '@/lib/traffic/cloudVoice';
 import { speedMonitor, speedMonitorAvailable, type SpeedFix } from '@/lib/native/speedMonitor';
 
@@ -101,7 +101,9 @@ export default function DrivePanel() {
       // Driving alerts use the configured AI cloud voice only. Demo/browser
       // substitution sounded like a tone rather than the user's ElevenLabs voice;
       // if cloud voice is not configured or fails, stop and say so explicitly.
-      const settings = await loadSettings();
+      // Prefer the settings this session is actually holding: a key typed into
+      // Settings is live in memory even when the app is set not to save keys.
+      const settings = getCurrentSettings() ?? (await loadSettings());
       const ttsCfg = requireCloudVoice(settings.tts);
       const pipeline = new AudioPipeline();
       const tts = new TTSClient(pipeline);

@@ -11,6 +11,20 @@ import { loadSecrets, saveSecrets, deleteAllSecrets, purgeLegacyWebSecrets, Stor
 
 const SETTINGS_KEY = 'kitt.settings.v1';
 
+/**
+ * The settings as the current session knows them, including keys the user just
+ * typed. Storage may deliberately hold no secret at all — "remember keys on this
+ * device" is off by default — so any component that re-reads from disk would see
+ * an empty key field and refuse to work. Everything that needs the live values
+ * (the drive panel, above all) reads this first.
+ */
+let currentSettings: KITTSettings | null = null;
+
+/** Live settings for this session, or null before the app has loaded them. */
+export function getCurrentSettings(): KITTSettings | null {
+  return currentSettings;
+}
+
 export type StoredSettings = Omit<KITTSettings, 'llm' | 'tts' | 'stt'> & {
     llm: Omit<KITTSettings['llm'], 'apiKey' | 'searchApiKey'>;
     tts: Omit<KITTSettings['tts'], 'apiKey'>;
@@ -59,6 +73,7 @@ export async function saveSettings(s: KITTSettings): Promise<void> {
 
   // Once a key has actually been stored, the "please re-enter" notice is spent.
   const next = stored && Object.keys(secrets).length > 0 ? { ...s, secretsNeedReentry: false } : s;
+  currentSettings = next;
   writeSettings(next);
 }
 
@@ -102,6 +117,7 @@ export async function loadSettings(): Promise<KITTSettings> {
     /* secrets unavailable — session-only */
   }
 
+  currentSettings = s;
   return s;
 }
 

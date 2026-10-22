@@ -359,6 +359,20 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
               <>
                 <label style={label}>API key</label>
                 <input type="password" style={input} value={s.tts.apiKey} onChange={(e) => upd({ tts: { ...s.tts, apiKey: e.target.value } })} placeholder={s.tts.apiKey ? maskKey(s.tts.apiKey) : 'paste key…'} onFocus={(e) => e.currentTarget.select()} />
+                {!s.persistSecrets && (
+                  <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginTop: 6, fontSize: 11, color: '#ff9a3c' }}>
+                    <input
+                      type="checkbox"
+                      checked={s.persistSecrets}
+                      onChange={(e) => upd({ persistSecrets: e.target.checked })}
+                      style={{ marginTop: 2 }}
+                    />
+                    <span>
+                      This key works now, but it is not saved: keys are kept only until the app closes. Tick here to store it
+                      in this device&apos;s encrypted store so Vox still has a voice tomorrow.
+                    </span>
+                  </label>
+                )}
                 <label style={label}>{s.tts.provider === 'elevenlabs' ? 'Voice ID' : 'Voice (alloy/echo/fable/onyx/nova/shimmer)'}</label>
                 <input style={input} value={s.tts.voiceId} onChange={(e) => upd({ tts: { ...s.tts, voiceId: e.target.value } })} />
                 <label style={label}>Model {s.tts.provider === 'elevenlabs' ? '(eleven_turbo_v2_5 / eleven_multilingual_v2)' : '(tts-1 / tts-1-hd)'}</label>
