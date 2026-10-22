@@ -99,10 +99,10 @@ export class ConversationEngine {
     this.settings = settings;
     this.pipeline = new AudioPipeline();
     this.tts = new TTSClient(this.pipeline);
-    // A traffic warning must be able to cut this voice off mid-sentence; see
-    // lib/audio/speechBus.ts. Registered here because this is the single TTS
-    // owner for conversation speech.
-    this.unregisterSpeechOwner = registerSpeechOwner(() => this.tts.stop());
+    // A traffic warning must be able to cut both local speech and a cloud
+    // MediaSource stream off mid-sentence; interrupt() also drops the remaining
+    // assistant queue instead of letting old prose resume after the warning.
+    this.unregisterSpeechOwner = registerSpeechOwner(() => this.interrupt(false));
     this.pipeline.onEnded = () => this.onPlaybackDrained();
   }
 
