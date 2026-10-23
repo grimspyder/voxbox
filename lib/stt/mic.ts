@@ -19,6 +19,18 @@ export interface MicOptions {
   // energy threshold for end-of-turn (hands-free)
   silenceMs?: number;
   minSpeechMs?: number;
+  /**
+   * How long voiced energy must persist before barge-in is believed. Barge-in is
+   * only ever armed with echo cancellation confirmed (see the engine): a detector
+   * that fires on the first loud frame interrupts Vox with Vox's own voice.
+   */
+  bargeInMinMs?: number;
+  /**
+   * Current playback level, 0..1. Lets the detector require the microphone to be
+   * clearly louder than what the app is already playing, so residual echo that
+   * survived cancellation cannot be mistaken for the user.
+   */
+  playbackLevel?: () => number;
 }
 
 export class MicCapture {
@@ -39,13 +51,30 @@ export class MicCapture {
   private lastVoiceTime = 0;
   private rmsHistory: number[] = [];
   private adaptiveThreshold = 0.02;
+  private bargeCandidateSince = 0;
   active = false;
   /** While Vox is speaking, mic monitors for barge-in only (if enabled). */
   bargeInArmed = false;
 
+  /**
+   * Acquire the microphone and start the voice-activity loop.
+   *
+   * Idempotent on purpose. The engine calls this at the start of every listening
+   * window, and the previous version re-acquired the device each time without
+   * releasing it — a new getUserMedia stream, a new AudioContext and another
+   * animation loop per turn, with the old loops still running and still armed.
+   * Stale detectors firing during a later turn was one of the ways Vox ended up
+   * interrupting itself.
+   */
   async start(handlers: MicHandlers, opts: MicOptions): Promise<void> {
     this.handlers = handlers;
     this.opts = opts;
+    if (this.active && this.stream) {
+      // Already listening: adopt the new handlers/options and clear per-turn
+      // state, but keep the stream and the recorder alive.
+      this.reset();
+      return;
+    }
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -155,8 +184,11 @@ export class MicCapture {
       this.speechStart = now;
       this.lastVoiceTime = now;
       if (this.bargeInArmed && this.opts?.autoInterrupt) {
-        this.bargeInArmed = false;
-        this.handlers.onBargeIn?.();
+        // Loud is not enough. Our own voice reaches this microphone too, so a
+        // barge-in has to be *held* and it has to be louder than what we are
+        // already playing. Firing on the first frame is what made Vox interrupt
+        // itself mid-sentence.
+        this.bargeCandidateSince = now;
         return;
       }
       if (this.opts?.handsFree) this.startRecording();
@@ -175,7 +207,71 @@ export class MicCapture {
         this.stopRecording();
       }
     }
+
+    // Barge-in, evaluated on every frame so the hold can be measured.
+    if (this.bargeCandidateSince && voiced && this.bargeInArmed && this.opts?.autoInterrupt) {
+      const held = now - this.bargeCandidateSince;
+      if (held >= (this.opts.bargeInMinMs ?? 420) && this.exceedsPlayback(rms)) {
+        this.bargeCandidateSince = 0;
+        this.bargeInArmed = false;
+        this.speaking = false;
+        this.speechStart = 0;
+        this.handlers.onBargeIn?.();
+        return;
+      }
+    }
+    if (!voiced) this.bargeCandidateSince = 0;
   };
+
+  /**
+   * Is the microphone loud enough that it cannot be our own speaker output?
+   *
+   * With echo cancellation confirmed working, the residual of our own voice is
+   * far below the playback level, so requiring the microphone to exceed it keeps
+   * genuine speech and rejects leakage. Where the level cannot be measured (a
+   * device voice that plays outside the Web Audio graph) the bar is a multiple of
+   * the adaptive noise floor instead — deliberately high, because guessing wrong
+   * here means interrupting Vox with Vox.
+   */
+  private exceedsPlayback(rms: number): boolean {
+    const level = this.opts?.playbackLevel?.() ?? 0;
+    if (!(level > 0.005)) return rms > Math.max(this.adaptiveThreshold * 3, 0.03);
+    return rms > level * 0.7 + 0.012;
+  }
+
+  /** Clear per-turn voice state. Never touches the stream or an active recording. */
+  reset(): void {
+    this.speaking = false;
+    this.speechStart = 0;
+    this.lastVoiceTime = 0;
+    this.rmsHistory = [];
+    this.bargeCandidateSince = 0;
+    this.bargeInArmed = false;
+  }
+
+  /** True while an utterance is being captured, so the engine does not discard it. */
+  get isRecording(): boolean {
+    return this.recorder !== null && this.recorder.state === 'recording';
+  }
+
+  /**
+   * What the device actually granted for echo cancellation.
+   *
+   * Asked for is not the same as applied: browsers and Android WebViews silently
+   * drop audio constraints they do not implement, and a mic without echo
+   * cancellation hears the phone's own speaker. `null` means the device did not
+   * report it, which must not be read as "yes".
+   */
+  echoCancellationGranted(): boolean | null {
+    try {
+      const track = this.stream?.getAudioTracks?.()[0];
+      const settings = track?.getSettings?.() as { echoCancellation?: boolean } | undefined;
+      if (settings && typeof settings.echoCancellation === 'boolean') return settings.echoCancellation;
+      return null;
+    } catch {
+      return null;
+    }
+  }
 
   stop(): void {
     this.active = false;

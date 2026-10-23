@@ -7,10 +7,33 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ALLOWED_AUDIO_MIME_TYPES, LIMITS } from '@/lib/server/limits';
 import { jsonError, enforceRateLimit, providerSignal, contentLengthExceeded, corsHeaders, handlePreflight } from '@/lib/server/http';
 import { consumerProviderError } from '@/lib/server/providerErrors';
+import { diagnoseSttKey, resolveSpeechProvider } from '@/lib/server/sttKey';
 
 export const runtime = 'nodejs';
 
-const ALLOWED_MODELS = new Set(['whisper-1', 'gpt-4o-transcribe', 'gpt-4o-mini-transcribe']);
+const ALLOWED_MODELS = new Set([
+  'whisper-1',
+  'gpt-4o-transcribe',
+  'gpt-4o-mini-transcribe',
+  // OpenRouter serves the same models under vendor-prefixed ids.
+  'openai/whisper-1',
+  'openai/whisper-large-v3',
+  'openai/whisper-large-v3-turbo',
+  'openai/gpt-4o-transcribe',
+  'openai/gpt-4o-mini-transcribe',
+]);
+
+const ENDPOINTS = {
+  openai: 'https://api.openai.com/v1/audio/transcriptions',
+  openrouter: 'https://openrouter.ai/api/v1/audio/transcriptions',
+} as const;
+
+type SpeechProvider = keyof typeof ENDPOINTS;
+
+/** OpenRouter ids carry a vendor prefix; the bare OpenAI ids would 400. */
+function defaultModelFor(provider: SpeechProvider): string {
+  return provider === 'openrouter' ? 'openai/whisper-large-v3' : 'whisper-1';
+}
 const LANGUAGE_RE = /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/;
 
 const EXTENSION_MIME: Record<string, string> = {
@@ -79,8 +102,16 @@ export async function POST(req: NextRequest) {
     return fail('That recording is too large to transcribe. Try a shorter message.', 413);
   }
 
-  const requestedModel = String(form.get('model') || 'whisper-1');
-  const model = ALLOWED_MODELS.has(requestedModel) ? requestedModel : 'whisper-1';
+  const requestedProvider = String(form.get('provider') || 'openai');
+  // The key's prefix wins over the dropdown: an sk-or key sent to OpenAI has
+  // never worked, and that mismatch is not the user's to debug.
+  const provider: SpeechProvider = resolveSpeechProvider(requestedProvider, apiKey);
+  const requestedModel = String(form.get('model') || defaultModelFor(provider));
+  let model = ALLOWED_MODELS.has(requestedModel) ? requestedModel : defaultModelFor(provider);
+  // OpenRouter rejects bare ids like "whisper-1"; it wants the vendor prefix.
+  if (provider === 'openrouter' && !model.includes('/')) {
+    model = 'openai/whisper-large-v3';
+  }
   const requestedLanguage = String(form.get('language') || 'en');
   const language = LANGUAGE_RE.test(requestedLanguage) ? requestedLanguage : 'en';
 
@@ -91,17 +122,26 @@ export async function POST(req: NextRequest) {
 
   const signal = providerSignal(req.signal, LIMITS.stt.timeoutMs);
   try {
-    const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    const res = await fetch(ENDPOINTS[provider], {
       method: 'POST',
       signal,
       redirect: 'error',
-      headers: { authorization: `Bearer ${apiKey}` },
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        ...(provider === 'openrouter'
+          ? { 'HTTP-Referer': 'https://voxbox-eight.vercel.app', 'X-Title': 'Voxbox' }
+          : {}),
+      },
       body: out,
     });
     if (!res.ok) {
       const raw = await res.text().catch(() => '');
       if (res.status === 401) {
-        return fail('Your speech recognition key was rejected. Check it in Setup → Speech.', 502);
+        // Say which key was sent and what is wrong with it, without ever
+        // revealing it. "Check it in Setup" was useless when the key had been
+        // pasted twice or belonged to another provider.
+        const diag = diagnoseSttKey(apiKey, provider);
+        return fail(`${diag.message} (sent: ${diag.fingerprint})`, 502);
       }
       if (res.status === 429) {
         return fail('Your speech service is rate limiting Vox. Wait a moment and try again.', 502);

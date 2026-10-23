@@ -16,7 +16,13 @@ import { computeBarLevels, BarLevels, DEFAULT_TUNING, ModulatorTuning } from '@/
 import SettingsPanel from './SettingsPanel';
 import SetupWizard from './SetupWizard';
 import ReportResponse from './ReportResponse';
+import DrivePanel from './DrivePanel';
 import { listMics } from '@/lib/stt/mic';
+import type { Citation } from '@/lib/llm/types';
+import {
+  isFullscreenActive,
+  toggleFullscreen as togglePlatformFullscreen,
+} from '@/lib/native/fullscreen';
 
 type Status = 'OFFLINE' | 'LISTENING' | 'THINKING' | 'SPEAKING' | 'ERROR';
 const STATUS_LABEL: Record<Status, string> = {
@@ -44,11 +50,17 @@ export default function KittDashboard() {
   const [reportTarget, setReportTarget] = useState<string | null>(null);
   const [settingsReady, setSettingsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
   const [interim, setInterim] = useState('');
+  /** Sources from the automatic live lookup for the most recent answer. */
+  const [sources, setSources] = useState<Citation[]>([]);
   const [latency, setLatency] = useState<string>('');
   const [inputLevel, setInputLevel] = useState(0);
   const [micList, setMicList] = useState<MediaDeviceInfo[]>([]);
+  // Whether the display is filling the screen, so the same control can offer an
+  // obvious way back out (production requirements MOBILE-07).
+  const [fullscreenActive, setFullscreenActive] = useState(false);
 
   // The most recent reply, which is what "report last response" refers to. Derived
   // after the transcript state it reads, or it would be in its temporal dead zone.
@@ -149,7 +161,9 @@ export default function KittDashboard() {
         }
       },
       onError: (msg) => setError(msg),
+      onNotice: (msg) => setNotice(msg),
       onMicrophoneReady: () => { void refreshMics(); },
+      onSources: (s) => setSources(s),
       });
   }, [settings, handleTranscript, refreshMics]);
 
@@ -167,6 +181,7 @@ export default function KittDashboard() {
   /** Clear the conversation context Vox is using (keeps the session running). */
   const newConversation = useCallback(() => {
     engineRef.current?.newConversation();
+    setSources([]);
     setInterim('');
     setTranscript([]);
     clearHistory();
@@ -237,11 +252,31 @@ export default function KittDashboard() {
     ledTestRef.current.raf = requestAnimationFrame(tick);
   }, []);
 
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      void document.exitFullscreen().catch(() => undefined);
-    } else {
-      void document.documentElement.requestFullscreen().catch(() => undefined);
+  // Fullscreen is not available everywhere, and the previous version of this
+  // handler called the browser API and threw the rejection away — which is
+  // exactly why pressing FULLSCREEN in the Android app did nothing at all
+  // instead of reporting anything. The work now lives in
+  // lib/native/fullscreen.ts, which chooses the native shell plugin or the
+  // browser API and reports failure rather than swallowing it.
+  const refreshFullscreen = useCallback(async () => {
+    setFullscreenActive(await isFullscreenActive());
+  }, []);
+
+  useEffect(() => {
+    void refreshFullscreen();
+    if (typeof document === 'undefined') return;
+    // The browser path can leave fullscreen without the app asking (Escape), so
+    // follow the event rather than trusting the last click.
+    const onChange = () => void refreshFullscreen();
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, [refreshFullscreen]);
+
+  const toggleFullscreen = useCallback(async () => {
+    const result = await togglePlatformFullscreen();
+    setFullscreenActive(result.active);
+    if (!result.ok) {
+      setNotice('This device does not allow fullscreen in the app. The display still fills the window.');
     }
   }, []);
 
@@ -386,6 +421,8 @@ export default function KittDashboard() {
         {latency && <span style={{ color: '#666', fontSize: 11 }}>first-audio: {latency}</span>}
       </div>
 
+      <DrivePanel />
+
       <div className="kitt-buttons" style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
         {machine.state === 'DISCONNECTED' ? (
           <button onClick={() => void startConversation()} className="kitt-btn">▶ START CONVERSATION</button>
@@ -408,7 +445,9 @@ export default function KittDashboard() {
           <button onClick={interrupt} className="kitt-btn" aria-label="Interrupt Vox">✖ INTERRUPT</button>
         )}
         <button onClick={toggleLedTest} className="kitt-btn" aria-label="Test the LED modulator">◉ TEST LEDS</button>
-        <button onClick={toggleFullscreen} className="kitt-btn" aria-label="Toggle full screen">⛶ FULLSCREEN</button>
+        <button onClick={() => void toggleFullscreen()} className="kitt-btn" aria-label="Toggle full screen">
+          ⛶ {fullscreenActive ? 'EXIT FULLSCREEN' : 'FULLSCREEN'}
+        </button>
         <button onClick={() => setShowSettings(true)} className="kitt-btn" aria-label="Open settings">⚙ SETTINGS</button>
       </div>
 
@@ -433,6 +472,13 @@ export default function KittDashboard() {
           {error}{' '}
           <button className="kitt-btn" onClick={() => { setError(null); void startConversation(); }}>RETRY</button>
           <button className="kitt-btn" onClick={() => setError(null)}>DISMISS</button>
+        </div>
+      )}
+
+      {notice && (
+        <div role="status" style={{ color: '#e0b64a', fontSize: 12, margin: 8, maxWidth: '90vw', textAlign: 'center' }}>
+          {notice}{' '}
+          <button className="kitt-btn" onClick={() => setNotice(null)}>OK</button>
         </div>
       )}
 
@@ -463,6 +509,19 @@ export default function KittDashboard() {
             </div>
           ))}
           {interim && <div style={{ color: '#666' }}><b>Vox:</b> {interim}</div>}
+          {sources.length > 0 && (
+            <div style={{ marginTop: 6, fontSize: 11, color: '#777' }}>
+              <b>Sources:</b>{' '}
+              {sources.map((s, i) => (
+                <span key={s.url}>
+                  {i > 0 && ' · '}
+                  <a href={s.url} target="_blank" rel="noreferrer" style={{ color: '#8ab4f8' }}>
+                    {s.title}
+                  </a>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

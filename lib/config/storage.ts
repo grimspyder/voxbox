@@ -11,8 +11,22 @@ import { loadSecrets, saveSecrets, deleteAllSecrets, purgeLegacyWebSecrets, Stor
 
 const SETTINGS_KEY = 'kitt.settings.v1';
 
+/**
+ * The settings as the current session knows them, including keys the user just
+ * typed. Storage may deliberately hold no secret at all — "remember keys on this
+ * device" is off by default — so any component that re-reads from disk would see
+ * an empty key field and refuse to work. Everything that needs the live values
+ * (the drive panel, above all) reads this first.
+ */
+let currentSettings: KITTSettings | null = null;
+
+/** Live settings for this session, or null before the app has loaded them. */
+export function getCurrentSettings(): KITTSettings | null {
+  return currentSettings;
+}
+
 export type StoredSettings = Omit<KITTSettings, 'llm' | 'tts' | 'stt'> & {
-    llm: Omit<KITTSettings['llm'], 'apiKey'>;
+    llm: Omit<KITTSettings['llm'], 'apiKey' | 'searchApiKey'>;
     tts: Omit<KITTSettings['tts'], 'apiKey'>;
     stt: Omit<KITTSettings['stt'], 'apiKey'>;
   };
@@ -21,7 +35,7 @@ function stripSecrets(s: KITTSettings): StoredSettings {
   const { llm, tts, stt, ...rest } = s;
   return {
     ...rest,
-    llm: { ...llm, apiKey: '' },
+    llm: { ...llm, apiKey: '', searchApiKey: '' },
     tts: { ...tts, apiKey: '' },
     stt: { ...stt, apiKey: '' },
   } as unknown as StoredSettings;
@@ -34,6 +48,7 @@ function collectSecrets(s: KITTSettings): StoredSecrets {
     if (s.llm.apiKey) secrets.llm = s.llm.apiKey;
     if (s.tts.apiKey) secrets.tts = s.tts.apiKey;
     if (s.stt.apiKey) secrets.stt = s.stt.apiKey;
+    if (s.llm.searchApiKey) secrets.llmSearch = s.llm.searchApiKey;
   }
   return secrets;
 }
@@ -58,6 +73,7 @@ export async function saveSettings(s: KITTSettings): Promise<void> {
 
   // Once a key has actually been stored, the "please re-enter" notice is spent.
   const next = stored && Object.keys(secrets).length > 0 ? { ...s, secretsNeedReentry: false } : s;
+  currentSettings = next;
   writeSettings(next);
 }
 
@@ -94,12 +110,14 @@ export async function loadSettings(): Promise<KITTSettings> {
     if (secrets.llm) s.llm = { ...s.llm, apiKey: secrets.llm };
     if (secrets.tts) s.tts = { ...s.tts, apiKey: secrets.tts };
     if (secrets.stt) s.stt = { ...s.stt, apiKey: secrets.stt };
+    if (secrets.llmSearch) s.llm = { ...s.llm, searchApiKey: secrets.llmSearch };
     // A key came back, so any previously stored notice is stale.
-    if (secrets.llm || secrets.tts || secrets.stt) s = { ...s, secretsNeedReentry: false };
+    if (secrets.llm || secrets.tts || secrets.stt || secrets.llmSearch) s = { ...s, secretsNeedReentry: false };
   } catch {
     /* secrets unavailable — session-only */
   }
 
+  currentSettings = s;
   return s;
 }
 

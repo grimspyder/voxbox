@@ -11,6 +11,7 @@ import { testMicrophone } from '@/lib/stt/micTest';
 import { buildSystemCheck, summariseCheck } from '@/lib/setup/readiness';
 import { reportCapabilities, Capability } from '@/lib/setup/capabilities';
 import { secretStoreBackend, SecretStoreBackend } from '@/lib/config/secureStore';
+import { chatOpenRouterKey } from '@/lib/stt/speechConfig';
 
 interface Props {
   settings: KITTSettings;
@@ -139,6 +140,9 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
   // Optimistic until the capability probe reports in, so the prerendered HTML
   // and the first client render agree.
   const deviceVoiceOk = caps.length === 0 || (caps.find((c) => c.id === 'speech-synthesis')?.ok ?? true);
+  // The chat leg's OpenRouter key can serve speech too; say which one is in use
+  // rather than letting a stale copy in the speech slot speak for it.
+  const speechChatKey = chatOpenRouterKey(s);
 
   return (
     <div role="dialog" aria-label="Settings" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 50, overflowY: 'auto', padding: '16px' }}>
@@ -284,6 +288,7 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
               <option value="gemini">Google Gemini</option>
               <option value="openai-compatible">OpenAI-compatible endpoint</option>
               <option value="openrouter">OpenRouter</option>
+              <option value="xai">xAI Grok</option>
             </select>
             {s.llm.provider === 'openai-compatible' && (
               <>
@@ -299,9 +304,30 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             {s.llm.provider !== 'demo' && (
               <>
                 <label style={label}>API key (stored encrypted on this device only)</label>
-                <input type="password" style={input} value={s.llm.apiKey} onChange={(e) => upd({ llm: { ...s.llm, apiKey: e.target.value } })} placeholder={s.llm.apiKey ? maskKey(s.llm.apiKey) : 'paste key…'} />
+                <input type="password" style={input} value={s.llm.apiKey} onChange={(e) => upd({ llm: { ...s.llm, apiKey: e.target.value } })} placeholder={s.llm.apiKey ? maskKey(s.llm.apiKey) : 'paste key…'} onFocus={(e) => e.currentTarget.select()} />
               </>
             )}
+            <label style={label}>
+              <input
+                type="checkbox"
+                checked={s.llm.searchEnabled}
+                onChange={(e) => upd({ llm: { ...s.llm, searchEnabled: e.target.checked } })}
+              />{' '}
+              Live answers for current events
+            </label>
+            <label style={label}>Grok key for live web &amp; X lookups (xAI)</label>
+            <input
+              type="password"
+              style={input}
+              onFocus={(e) => e.currentTarget.select()}
+              value={s.llm.searchApiKey}
+              onChange={(e) => upd({ llm: { ...s.llm, searchApiKey: e.target.value } })}
+              placeholder={s.llm.searchApiKey ? maskKey(s.llm.searchApiKey) : 'xai-…'}
+            />
+            <p style={{ fontSize: 11, color: '#666' }}>
+              When a Grok key is set, questions about current events (news, prices, scores, weather) are answered from a
+              live web and X search. Leave it blank and Vox behaves exactly as before.
+            </p>
             <label style={label}>Temperature ({s.llm.temperature.toFixed(2)})</label>
             <input type="range" min={0} max={1.5} step={0.05} value={s.llm.temperature} onChange={(e) => upd({ llm: { ...s.llm, temperature: Number(e.target.value) } })} style={{ width: '100%' }} />
             <label style={label}>Max response tokens</label>
@@ -332,7 +358,21 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             {(s.tts.provider === 'elevenlabs' || s.tts.provider === 'openai') && (
               <>
                 <label style={label}>API key</label>
-                <input type="password" style={input} value={s.tts.apiKey} onChange={(e) => upd({ tts: { ...s.tts, apiKey: e.target.value } })} placeholder={s.tts.apiKey ? maskKey(s.tts.apiKey) : 'paste key…'} />
+                <input type="password" style={input} value={s.tts.apiKey} onChange={(e) => upd({ tts: { ...s.tts, apiKey: e.target.value } })} placeholder={s.tts.apiKey ? maskKey(s.tts.apiKey) : 'paste key…'} onFocus={(e) => e.currentTarget.select()} />
+                {!s.persistSecrets && (
+                  <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginTop: 6, fontSize: 11, color: '#ff9a3c' }}>
+                    <input
+                      type="checkbox"
+                      checked={s.persistSecrets}
+                      onChange={(e) => upd({ persistSecrets: e.target.checked })}
+                      style={{ marginTop: 2 }}
+                    />
+                    <span>
+                      This key works now, but it is not saved: keys are kept only until the app closes. Tick here to store it
+                      in this device&apos;s encrypted store so Vox still has a voice tomorrow.
+                    </span>
+                  </label>
+                )}
                 <label style={label}>{s.tts.provider === 'elevenlabs' ? 'Voice ID' : 'Voice (alloy/echo/fable/onyx/nova/shimmer)'}</label>
                 <input style={input} value={s.tts.voiceId} onChange={(e) => upd({ tts: { ...s.tts, voiceId: e.target.value } })} />
                 <label style={label}>Model {s.tts.provider === 'elevenlabs' ? '(eleven_turbo_v2_5 / eleven_multilingual_v2)' : '(tts-1 / tts-1-hd)'}</label>
@@ -363,17 +403,34 @@ export default function SettingsPanel({ settings, micList, onRefreshMics, onClos
             <select style={input} value={s.stt.provider} onChange={(e) => upd({ stt: { ...s.stt, provider: e.target.value as STTProviderId } })}>
               <option value="browser">Browser recognition (Chrome/Edge)</option>
               <option value="openai">OpenAI Whisper (API key required)</option>
+              <option value="openrouter">OpenRouter Whisper (same key as chat)</option>
             </select>
-            {s.stt.provider === 'openai' && (
+            {s.stt.provider !== 'browser' && (
               <>
-                <label style={label}>Whisper API key</label>
-                <input type="password" style={input} value={s.stt.apiKey} onChange={(e) => upd({ stt: { ...s.stt, apiKey: e.target.value } })} placeholder={s.stt.apiKey ? maskKey(s.stt.apiKey) : 'paste key…'} />
+                <label style={label}>{s.stt.provider === 'openrouter' ? 'OpenRouter API key' : 'Whisper API key'}</label>
+                <input type="password" style={input} value={s.stt.apiKey} onChange={(e) => upd({ stt: { ...s.stt, apiKey: e.target.value } })} placeholder={s.stt.apiKey ? maskKey(s.stt.apiKey) : 'paste key…'} onFocus={(e) => e.currentTarget.select()} />
+                {speechChatKey && s.stt.provider === 'openrouter' && (
+                  <p style={{ fontSize: 11, color: '#7bd87b', margin: '4px 0 0' }}>
+                    Speech uses your OpenRouter chat key ({maskKey(speechChatKey)}), so this field can stay empty.
+                  </p>
+                )}
+                {speechChatKey && s.stt.provider === 'openai' && (
+                  <p style={{ fontSize: 11, color: '#ff9a3c', margin: '4px 0 0' }}>
+                    Chat runs on OpenRouter, but speech still uses the OpenAI key above. If that key was revoked or replaced,
+                    choose OpenRouter Whisper — Vox will then use your OpenRouter key for speech too.
+                  </p>
+                )}
               </>
             )}
             <label style={label}>Hands-free conversation (auto end-of-turn)</label>
             <input type="checkbox" checked={s.mic.handsFree} onChange={(e) => upd({ mic: { ...s.mic, handsFree: e.target.checked } })} />
             <label style={label}>Automatic interruption (barge-in)</label>
             <input type="checkbox" checked={s.mic.autoInterrupt} onChange={(e) => upd({ mic: { ...s.mic, autoInterrupt: e.target.checked } })} />
+            <p style={{ fontSize: 11, color: '#999', margin: '2px 0 10px' }}>
+              Only used when the device confirms echo cancellation. Without it the microphone
+              hears Vox&apos;s own speaker and Vox would interrupt itself — the INTERRUPT button
+              and headphones always work.
+            </p>
             <label style={label}>Echo cancellation</label>
             <input type="checkbox" checked={s.mic.echoCancellation} onChange={(e) => upd({ mic: { ...s.mic, echoCancellation: e.target.checked } })} />
             <label style={label}>Noise suppression</label>

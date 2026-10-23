@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# sideload APK served by app/api/download (built locally, never committed)
+artifacts/*.apk

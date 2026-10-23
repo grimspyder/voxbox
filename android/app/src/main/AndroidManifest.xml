@@ -35,6 +35,15 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- Speed monitoring. exported=false: only this app can start it.
+             stopWithTask=false so a swipe-away does not silently end a drive,
+             but the plugin stops it explicitly when drive mode ends. -->
+        <service
+            android:name=".SpeedMonitorService"
+            android:exported="false"
+            android:foregroundServiceType="location"
+            android:stopWithTask="false" />
     </application>
 
     <!-- Permissions -->
@@ -54,6 +63,18 @@
          capability. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
+    <!-- Speed monitoring for traffic alerts. Foreground location service: the
+         phone runs in a cradle with the screen off, so plain location updates
+         would be frozen. The persistent notification is mandatory on Android 8+
+         and is also the visible indicator that location is in use. Play requires
+         a foreground-service declaration for the location type. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Devices without a microphone can still install Vox and talk by text. -->
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <!-- Location is optional: without it the app works, traffic alerts do not. -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 </manifest>

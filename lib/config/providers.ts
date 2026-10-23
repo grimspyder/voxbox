@@ -37,7 +37,7 @@ export const PROVIDER_CARDS: ProviderCard[] = [
   {
     id: 'openrouter',
     name: 'OpenRouter',
-    blurb: 'One key, many different AI models, often with free or cheap options.',
+    blurb: 'One key for many models, and since 2026 the same key also transcribes speech.',
     preferredModels: [
       'openai/gpt-4o-mini',
       'google/gemini-2.0-flash-001',
@@ -46,6 +46,15 @@ export const PROVIDER_CARDS: ProviderCard[] = [
     ],
     keyUrl: 'https://openrouter.ai/keys',
     keyHint: 'Starts with “sk-or-”. Created on the Keys page of your OpenRouter account.',
+    reusableForSpeech: false,
+  },
+  {
+    id: 'xai',
+    name: 'xAI Grok',
+    blurb: 'Grok models from xAI. The same key also powers live web and X answers.',
+    preferredModels: ['grok-4-fast', 'grok-4', 'grok-3-mini', 'grok-3'],
+    keyUrl: 'https://console.x.ai',
+    keyHint: 'Starts with “xai-”. Created on the API Keys page of your xAI console.',
     reusableForSpeech: false,
   },
   {

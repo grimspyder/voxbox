@@ -1,5 +1,5 @@
 // Client-side LLM access. Routes through /api/llm so keys are used server-side.
-import { ChatMessage, KITTError } from './types';
+import { ChatMessage, KITTError, LiveLookupResult } from './types';
 import { demoProvider } from './providers/demoProvider';
 import { apiUrl, apiHeaders } from '../config/apiBase';
 
@@ -8,11 +8,11 @@ export interface Turn {
   content: string;
 }
 
-export function buildMessages(systemPrompt: string, history: Turn[]): ChatMessage[] {
-  return [
-    { role: 'system', content: systemPrompt },
-    ...history.slice(-16).map((t) => ({ role: t.role, content: t.content })),
-  ];
+export function buildMessages(systemPrompt: string, history: Turn[], liveNote?: string): ChatMessage[] {
+  const messages: ChatMessage[] = [{ role: 'system', content: systemPrompt }];
+  if (liveNote) messages.push({ role: 'system', content: liveNote });
+  messages.push(...history.slice(-16).map((t) => ({ role: t.role, content: t.content })));
+  return messages;
 }
 
 export class LLMClient {
@@ -59,6 +59,34 @@ export class LLMClient {
     }
   }
 
+  /**
+   * Automatic live lookup via Grok web/X search. Used by the conversation engine
+   * before a turn whose question needs current information. Throws on failure so
+   * the caller can decide to fail open; the engine does.
+   */
+  async liveLookup(
+    opts: { apiKey: string; model?: string; query: string; context?: string },
+    signal?: AbortSignal,
+  ): Promise<LiveLookupResult> {
+    const res = await fetch(apiUrl('/api/llm/live'), {
+      method: 'POST',
+      signal,
+      headers: apiHeaders({ 'content-type': 'application/json' }),
+      body: JSON.stringify(opts),
+    });
+    if (!res.ok) {
+      let msg = `Live lookup error ${res.status}`;
+      try {
+        const j = await res.json();
+        if (j.error) msg = j.error;
+      } catch {
+        /* not json */
+      }
+      throw new KITTError('live', msg);
+    }
+    return (await res.json()) as LiveLookupResult;
+  }
+
   /** TEST CONNECTION helper. */
   async testConnection(opts: { provider: string; apiKey: string; model: string; baseUrl?: string }): Promise<{ ok: boolean; message: string }> {
     if (opts.provider === 'demo') return { ok: true, message: 'Demo mode active — no cloud AI required.' };
@@ -66,11 +94,17 @@ export class LLMClient {
       let out = '';
       for await (const c of this.streamChat(
         [{ role: 'user', content: 'Reply with exactly: ONLINE' }],
-        { ...opts, temperature: 0, maxTokens: 10 },
+        { ...opts, temperature: 0, maxTokens: 256 },
       )) {
         out += c;
       }
-      if (!out.trim()) return { ok: false, message: 'Provider responded with empty output.' };
+      if (!out.trim()) {
+        return {
+          ok: false,
+          message:
+            'The provider accepted the key but returned no text. Reasoning models spend the first tokens thinking, so raise the max-token setting or pick a non-reasoning model.',
+        };
+      }
       return { ok: true, message: `Connection successful (${opts.provider}/${opts.model}).` };
     } catch (e) {
       return { ok: false, message: e instanceof KITTError ? e.message : String(e) };
