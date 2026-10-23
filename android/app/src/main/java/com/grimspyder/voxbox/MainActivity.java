@@ -1,6 +1,7 @@
 package com.grimspyder.voxbox;
 
 import android.os.Bundle;
+import android.view.WindowManager;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -20,5 +21,19 @@ public class MainActivity extends BridgeActivity {
         // and drive mode cannot start.
         registerPlugin(SpeedMonitorPlugin.class);
         super.onCreate(savedInstanceState);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Keep the display awake only while Voxbox is in the foreground; restore
+        // the user's normal screen timeout as soon as the app is no longer visible.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+
+    @Override
+    public void onStop() {
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        super.onStop();
     }
 }
